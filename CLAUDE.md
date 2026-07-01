@@ -22,3 +22,17 @@ Frontend en Netlify (`frontend/`). Backend en Railway (`backend/`). El agente de
 
 ## Secretos
 La clave de impresora (`PRINTER_KEY`) y la del panel (`PANEL_PASSWORD`) **nunca** se commitean: van como variables de entorno en cada plataforma.
+
+## Guardarraíles del blindaje (no romper)
+El sistema está endurecido para un evento en vivo sin nadie corrigiendo. Al editar, respetar:
+- **Miniaturas del panel** van por `fetch` + `Authorization: Bearer`. **Nunca** poner la clave en la URL (`?token=`).
+- **Fuentes autohospedadas** en `frontend/public/fonts` (woff2). No volver al CDN de Google.
+- Backend **fail-fast**: no arranca sin `PRINTER_KEY`/`PANEL_PASSWORD`/`FRONTEND_ORIGIN` (ni con `*` en CORS). No poner defaults inseguros.
+- Cola: **idempotencia** por subida (`Idempotency-Key`), claim atómico, y recuperación de `printing` trabado (`PRINTING_TIMEOUT_S`). La foto se descuenta **solo** con subida confirmada. No romper estas invariantes.
+- Composición: esperar fuentes con timeout (nunca colgar), stickers random horneados **una sola vez**, orientación EXIF/HEIC. Ver `frontend/src/lib/{compose,fonts,stickers}.ts`.
+
+## Gap de contenido (lo provee el humano)
+Solo hay **2 marcos** (negro/rojo) + **3 stickers** dibujados por código (bola 8, sello "13", corazón pixel). La variedad ampliada del sticker sheet (golondrinas, llamas, labios…) **no está**: no inventarla, hay TODO en `frontend/src/lib/stickers.ts`.
+
+## Referencias
+`docs/HARDENING-REPORT.md` (hallazgos+fixes), `docs/EVENT-CHECKLIST.md` (cierre manual del humano), `tests/` (verificación reproducible).
