@@ -32,8 +32,10 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="13 años Reset — cola de impresión", version="1.0.0", lifespan=lifespan)
 
 # CORS: frontend (Netlify) y backend (Railway) viven en dominios distintos.
-# Solo se permite el origen del frontend, leído del entorno.
-_origins = [o.strip() for o in FRONTEND_ORIGIN.split(",") if o.strip()]
+# Solo se permite el origen del frontend, leído del entorno. Se normaliza
+# quitando barra final: un "Origin" HTTP nunca la lleva, así que tolerar
+# `https://sitio/` evita un footgun de config que rompería CORS en silencio.
+_origins = [o.strip().rstrip("/") for o in FRONTEND_ORIGIN.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
