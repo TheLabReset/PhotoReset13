@@ -42,23 +42,33 @@ export function isLowRes(width: number, height: number): boolean {
 export async function loadOrientedBitmap(file: Blob): Promise<ImageBitmap> {
   try {
     return await createImageBitmap(file, { imageOrientation: 'from-image' })
-  } catch {
-    // Fallback para navegadores sin la opción: bitmap sin corrección.
+  } catch (e) {
+    // Fallback para navegadores sin la opción: bitmap sin corrección. Si esto
+    // también falla (p.ej. HEIC que el navegador no decodifica), propaga el
+    // error para que la UI muestre un mensaje claro y pida reintentar.
+    console.warn('[compose] imageOrientation no soportado, usando fallback', e)
     return await createImageBitmap(file)
   }
 }
 
-let logoPromise: Promise<HTMLImageElement | null> | null = null
+let logoCache: HTMLImageElement | null = null
 // El logo hueso (blanco) va sobre marco negro Y rojo (ver handoff §Assets).
+// Solo cacheamos el éxito: si falla, se reintenta en la próxima foto (no dejar
+// un fallo cacheado que deje todas las impresiones sin logo).
 function loadLogo(): Promise<HTMLImageElement | null> {
-  if (logoPromise) return logoPromise
-  logoPromise = new Promise((resolve) => {
+  if (logoCache) return Promise.resolve(logoCache)
+  return new Promise((resolve) => {
     const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => resolve(null)
+    img.onload = () => {
+      logoCache = img
+      resolve(img)
+    }
+    img.onerror = () => {
+      console.warn('[compose] no se pudo cargar el logo /brand/reset-r-hueso.png')
+      resolve(null)
+    }
     img.src = '/brand/reset-r-hueso.png'
   })
-  return logoPromise
 }
 
 export interface ComposeParams {
@@ -77,7 +87,8 @@ export interface ComposeResult {
 // preview de confirmación y lo que se sube son idénticos.
 export async function composePrint(params: ComposeParams): Promise<ComposeResult> {
   const { bitmap, crop, name, style } = params
-  await ensureFontsReady()
+  const fontsOk = await ensureFontsReady()
+  if (!fontsOk) console.warn('[compose] componiendo sin garantía de fuentes horneadas')
   const logo = await loadLogo()
 
   const wx = BS
@@ -101,8 +112,9 @@ export async function composePrint(params: ComposeParams): Promise<ComposeResult
   x.clip()
   try {
     x.drawImage(bitmap, crop.x, crop.y, crop.width, crop.height, wx, wy, ww, wh)
-  } catch {
-    // rect fuente fuera de rango: dejar el fondo del marco.
+  } catch (e) {
+    // rect fuente fuera de rango: dejar el fondo del marco, pero avisar.
+    console.warn('[compose] drawImage falló (crop fuera de rango?)', e)
   }
   x.restore()
 

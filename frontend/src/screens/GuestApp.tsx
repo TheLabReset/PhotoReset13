@@ -9,8 +9,8 @@ import {
   type CropArea,
 } from '../lib/compose'
 import { pickPhotoStyle, type PhotoStyle } from '../lib/stickers'
-import { createJob } from '../lib/api'
-import { consumePhoto, getPhotosLeft, resetPhotos } from '../lib/storage'
+import { createJob, newIdempotencyKey, UploadError } from '../lib/api'
+import { consumePhoto, getPhotosLeft } from '../lib/storage'
 
 type Screen =
   | 'portada'
@@ -38,11 +38,30 @@ export default function GuestApp() {
 
   const [composed, setComposed] = useState<ComposeResult | null>(null)
   const [composing, setComposing] = useState(false)
+  const [composeFailed, setComposeFailed] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [offline, setOffline] = useState(false)
+  // Error screen: título/subtítulo + qué hace "reintentar" según el contexto.
+  const [errInfo, setErrInfo] = useState<{
+    title: string
+    sub: string
+    retryLabel: string
+    retry: () => void
+  }>({ title: '', sub: '', retryLabel: 'REINTENTAR', retry: () => {} })
+  // Clave de idempotencia de la foto actual: se reusa en cada reintento de subida
+  // para que el backend deduplique (un doble tap/reintento no crea 2 trabajos).
+  const idempKeyRef = useRef<string>('')
 
   useEffect(() => {
     setPhotosLeft(getPhotosLeft())
+  }, [])
+
+  // Liberar el object URL de la foto al desmontar (evita fuga de memoria).
+  const imgSrcRef = useRef<string | null>(null)
+  imgSrcRef.current = imgSrc
+  useEffect(() => {
+    return () => {
+      if (imgSrcRef.current) URL.revokeObjectURL(imgSrcRef.current)
+    }
   }, [])
 
   const nameUpper = (name || 'TU APODO').toUpperCase()
@@ -53,14 +72,18 @@ export default function GuestApp() {
     setImgSrc(null)
     setName('')
     setComposed(null)
+    setComposeFailed(false)
+    idempKeyRef.current = ''
     setScreen(getPhotosLeft() > 0 ? 'source' : 'limit')
   }
   const goPanel = () => {
     window.location.href = '/panel'
   }
-  const doResetDemo = () => {
-    setPhotosLeft(resetPhotos())
-    setScreen('portada')
+
+  function looksHeic(file: File): boolean {
+    const t = (file.type || '').toLowerCase()
+    const n = (file.name || '').toLowerCase()
+    return t.includes('heic') || t.includes('heif') || /\.(heic|heif)$/.test(n)
   }
 
   // --- elegir foto ---
@@ -69,6 +92,9 @@ export default function GuestApp() {
     e.target.value = '' // permite re-elegir el mismo archivo
     if (!file) return
     try {
+      // Punto crítico: fotos HEIC de iPhone. Intentamos decodificar igual (muchos
+      // navegadores/Safari las convierten o decodifican); si no se puede, mensaje
+      // claro pidiendo otra foto en vez de un fallo silencioso.
       const bitmap = await loadOrientedBitmap(file)
       bitmapRef.current?.close?.()
       bitmapRef.current = bitmap
@@ -77,9 +103,21 @@ export default function GuestApp() {
       setLowRes(isLowRes(bitmap.width, bitmap.height))
       setStyle(pickPhotoStyle()) // random horneado UNA vez
       setComposed(null)
+      setComposeFailed(false)
+      idempKeyRef.current = ''
       setScreen('crop')
-    } catch {
-      alert('No se pudo leer esa foto. Prueba con otra.')
+    } catch (err) {
+      console.error('[guest] no se pudo decodificar la foto', err)
+      const heic = looksHeic(file)
+      setErrInfo({
+        title: 'NO SE PUDO LEER',
+        sub: heic
+          ? 'Esa foto es HEIC de iPhone y este navegador no la abrió. En Ajustes › Cámara › Formatos elige "Más compatible", o sube otra foto.'
+          : 'No pudimos abrir esa foto. Prueba con otra.',
+        retryLabel: 'ELEGIR OTRA',
+        retry: () => setScreen('source'),
+      })
+      setScreen('error')
     }
   }
 
@@ -87,14 +125,16 @@ export default function GuestApp() {
   async function toConfirm() {
     setScreen('confirm')
     setComposed(null)
+    setComposeFailed(false)
     setComposing(true)
     try {
       const bitmap = bitmapRef.current
       if (!bitmap) throw new Error('sin foto')
       const result = await composePrint({ bitmap, crop, name, style })
       setComposed(result)
-    } catch {
-      setComposed(null)
+    } catch (err) {
+      console.error('[guest] falló la composición del marco', err)
+      setComposeFailed(true)
     } finally {
       setComposing(false)
     }
@@ -102,23 +142,48 @@ export default function GuestApp() {
 
   // --- enviar ---
   async function submit() {
-    if (!composed) return
+    // Capturar el blob localmente: la subida no depende de que el estado no cambie.
+    const current = composed
+    if (!current) return
+    if (!idempKeyRef.current) idempKeyRef.current = newIdempotencyKey()
+
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      setOffline(true)
-      setScreen('error')
+      showOffline()
       return
     }
-    setOffline(false)
     setProgress(0)
     setScreen('sending')
     try {
-      await createJob(composed.blob, name, (pct) => setProgress(pct))
+      await createJob(current.blob, name, idempKeyRef.current, (pct) => setProgress(pct))
+      // Solo aquí, con subida CONFIRMADA, se descuenta la foto.
       const left = consumePhoto()
       setPhotosLeft(left)
+      idempKeyRef.current = '' // consumida; una próxima subida usa clave nueva
       setScreen('success')
-    } catch {
-      setScreen('error')
+    } catch (e) {
+      const kind = e instanceof UploadError ? e.kind : 'network'
+      console.error('[guest] subida falló:', kind)
+      if (kind === 'offline') showOffline()
+      else if (kind === 'paused')
+        setErrInfoUpload('EN PAUSA', 'El staff pausó las subidas un momento. Reintenta en unos segundos.')
+      else if (kind === 'bad')
+        setErrInfoUpload('FOTO RECHAZADA', 'Algo salió mal con esa foto. Vuelve a encuadrar y reintenta.')
+      else setErrInfoUpload('LA SUBIDA', 'La foto no llegó. Cosas del wifi de evento.')
     }
+  }
+
+  function setErrInfoUpload(title: string, sub: string) {
+    setErrInfo({ title, sub, retryLabel: 'REINTENTAR', retry: () => void submit() })
+    setScreen('error')
+  }
+  function showOffline() {
+    setErrInfo({
+      title: 'SIN CONEXIÓN',
+      sub: 'Acércate al DJ, ahí llega mejor el wifi.',
+      retryLabel: 'REINTENTAR',
+      retry: () => void submit(),
+    })
+    setScreen('error')
   }
 
   function downloadPrint() {
@@ -227,15 +292,11 @@ export default function GuestApp() {
               right: 0,
               display: 'flex',
               justifyContent: 'center',
-              gap: 18,
               zIndex: 20,
             }}
           >
             <button className="link" onClick={goPanel}>
               staff
-            </button>
-            <button className="link" onClick={doResetDemo}>
-              ↺ reiniciar demo
             </button>
           </div>
         </div>
@@ -558,6 +619,15 @@ export default function GuestApp() {
                     boxShadow: 'var(--shadow-card)',
                   }}
                 />
+              ) : composeFailed ? (
+                <div style={{ textAlign: 'center', padding: '0 12px' }}>
+                  <div className="t-creep" style={{ color: 'var(--sangre)', fontSize: 34 }}>
+                    uy
+                  </div>
+                  <p style={{ color: '#b7ada6', fontSize: 13, lineHeight: 1.4, marginTop: 6 }}>
+                    No pudimos armar tu marco. Vuelve a encuadrar y prueba de nuevo.
+                  </p>
+                </div>
               ) : (
                 <div
                   className="t-pixel"
@@ -654,23 +724,23 @@ export default function GuestApp() {
             style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 0 }}
           >
             <div className="t-creep" style={{ color: 'var(--sangre)', fontSize: 44 }}>
-              {offline ? 'sin señal' : 'se cayó'}
+              se cayó
             </div>
             <div className="t-anton" style={{ color: 'var(--hueso)', fontSize: 24, marginTop: 2 }}>
-              {offline ? 'SIN CONEXIÓN' : 'LA SUBIDA'}
+              {errInfo.title}
             </div>
-            <p style={{ color: '#8a807a', fontSize: 13, margin: '10px 18px 22px' }}>
-              {offline
-                ? 'Acércate al DJ, ahí llega mejor el wifi.'
-                : 'La foto no llegó. Cosas del wifi de evento.'}
-            </p>
-            <button className="btn" style={{ width: 'auto', padding: '14px 28px' }} onClick={submit}>
-              REINTENTAR
+            <p style={{ color: '#8a807a', fontSize: 13, margin: '10px 18px 22px' }}>{errInfo.sub}</p>
+            <button
+              className="btn"
+              style={{ width: 'auto', padding: '14px 28px' }}
+              onClick={errInfo.retry}
+            >
+              {errInfo.retryLabel}
             </button>
             <button
               className="btn gh"
               style={{ fontSize: 14, padding: 10, marginTop: 12, width: 'auto' }}
-              onClick={() => setScreen('confirm')}
+              onClick={() => setScreen(composed ? 'confirm' : 'source')}
             >
               ‹ volver
             </button>

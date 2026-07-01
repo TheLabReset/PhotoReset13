@@ -20,12 +20,14 @@ Modelo `Job`: `id` (uuid hex), `name` (≤18), `status` (`queued|printing|printe
 ### `POST /api/jobs`
 Sube el PNG final ya compuesto.
 - **Body** (`multipart/form-data`): `image` (PNG **1200×1800**), `name` (string, opcional).
-- Valida tipo (PNG) y dimensiones exactas. Reencodea por seguridad (descarta metadatos).
-- **201** → `{ "id": "<uuid>", "position": <int> }` (posición 1-indexada en la cola).
-- **400** dimensiones/tipo inválido · **413** archivo muy grande.
+- **Header** (opcional pero recomendado): `Idempotency-Key: <uuid>`. Si llega dos veces la misma clave (doble tap, reintento de red), NO se crea un segundo trabajo: se devuelve el existente. El PNG se valida **antes** de crear el registro (no quedan trabajos colgados).
+- Valida tipo (PNG) y dimensiones exactas. Reencodea por seguridad (descarta metadatos, guarda contra decompression bombs).
+- **201** → `{ "id": "<uuid>", "position": <int>, "duplicate": <bool> }` (`duplicate: true` si se dedupeó por idempotencia).
+- **400** dimensiones/tipo inválido · **413** archivo muy grande · **503** subidas en pausa desde el panel.
 
 ```bash
-curl -X POST "$API/api/jobs" -F "image=@print.png;type=image/png" -F "name=MAJO CH."
+curl -X POST "$API/api/jobs" -H "Idempotency-Key: $(uuidgen)" \
+  -F "image=@print.png;type=image/png" -F "name=MAJO CH."
 ```
 
 ---
@@ -33,9 +35,15 @@ curl -X POST "$API/api/jobs" -F "image=@print.png;type=image/png" -F "name=MAJO 
 ## Agente (`Authorization: Bearer PRINTER_KEY`)
 
 ### `GET /api/agent/next`
-Toma **atómicamente** el trabajo `queued` más antiguo, lo pasa a `printing` y lo devuelve. La atomicidad (transacción `BEGIN IMMEDIATE`) evita imprimir dos veces.
+Toma **atómicamente** el trabajo `queued` más antiguo, lo pasa a `printing` y lo devuelve. La atomicidad (transacción `BEGIN IMMEDIATE`) evita imprimir dos veces. Antes de reclamar, recupera trabajos trabados (ver más abajo). Pedir trabajo **también cuenta como señal de vida** del agente.
 - **200** → `{ "id", "name", "image_url": "/api/agent/jobs/<id>/image" }`
-- **204** si no hay nada en cola.
+- **204** si no hay nada en cola **o si la impresión está en pausa** desde el panel.
+
+### `POST /api/agent/heartbeat`
+Latido para que el panel sepa que la impresora/agente sigue vivo. Llamar cada ~10s.
+- **200** → `{ "ok": true }`.
+
+**Recuperación de cola trabada:** si un trabajo queda en `printing` y el agente muere/reinicia, tras `PRINTING_TIMEOUT_S` (default 180s) vuelve solo a `queued` en el siguiente `/next`. Al arrancar el backend también recupera. El panel puede reencolar manualmente (reprint).
 
 ### `GET /api/agent/jobs/{id}/image`
 Devuelve los bytes del PNG.
@@ -64,21 +72,28 @@ Valida la clave antes de mostrar la cola en el front. **No** requiere header (re
   "jobs": [
     { "id", "name", "status", "thumb_url", "created_at" }
   ],
-  "counts": { "total", "printed", "queued" },
-  "paper":  { "total", "left" }
+  "counts":   { "total", "printed", "queued", "printing" },
+  "paper":    { "total", "left" },
+  "controls": { "uploads_paused", "printing_paused" },
+  "agent":    { "last_seen", "seconds_ago", "alive" }
 }
 ```
 Orden: `printing` primero, luego `queued` (más antiguo primero), luego el resto.
-`thumb_url` incluye un `?token=<PANEL_PASSWORD>` porque el navegador carga miniaturas con `<img src>` (sin headers).
+`thumb_url` es `/api/panel/jobs/<id>/image` (auth Bearer). El panel la carga con `fetch` + `Authorization` y arma un object URL — la clave **no** viaja en la URL (no queda en logs/historial).
 
-### `GET /api/panel/jobs/{id}/image?token=<PANEL_PASSWORD>`
-Miniatura/imagen del trabajo. Auth por query token. **200** `image/png` · **403** token inválido · **404** no existe.
+### `GET /api/panel/jobs/{id}/image`  (Bearer)
+Miniatura/imagen del trabajo. **200** `image/png` · **404** no existe.
+
+### `POST /api/panel/pause`
+Interruptores de emergencia. Pausar impresión → el agente recibe `204` en `/next`. Pausar subidas → `POST /api/jobs` responde `503`.
+- **Body**: `{ "target": "uploads" | "printing", "paused": <bool> }`.
+- **200** → `{ "uploads_paused", "printing_paused" }`.
 
 ### `POST /api/panel/jobs/{id}/skip`
 Marca `skipped`. **200** → `{ "id", "status" }`.
 
 ### `POST /api/panel/jobs/{id}/reprint`
-Vuelve a `queued` (al final de la cola). **200** → `{ "id", "status" }`.
+Vuelve a `queued` (al final de la cola). Sirve para reimprimir un `printed` **o desatascar un `printing` trabado**. **200** → `{ "id", "status" }`.
 
 ---
 
@@ -90,4 +105,4 @@ Vuelve a `queued` (al final de la cola). **200** → `{ "id", "status" }`.
 ---
 
 ## CORS
-El backend solo permite el origen del frontend (`FRONTEND_ORIGIN`, la URL de Netlify), leído del entorno. Métodos `GET, POST, OPTIONS`; headers `Authorization, Content-Type`.
+El backend solo permite el origen del frontend (`FRONTEND_ORIGIN`, la URL de Netlify), leído del entorno. Métodos `GET, POST, OPTIONS`; headers `Authorization, Content-Type, Idempotency-Key`. El backend **se niega a arrancar** (fail-fast) si faltan `PRINTER_KEY`, `PANEL_PASSWORD` o `FRONTEND_ORIGIN`.

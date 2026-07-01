@@ -100,7 +100,12 @@ En la **UI de Netlify** setea la variable de entorno (no se commitea):
 | `DATA_DIR` | backend (Railway) | Volumen para PNGs + SQLite (`/data`) |
 | `VITE_API_BASE_URL` | frontend (Netlify) | URL pública del backend |
 
-`.env.example` (raíz y `backend/`) tiene solo placeholders. **La clave de impresora y la del panel nunca se commitean**: van como variables de entorno en cada plataforma.
+Opcionales del backend (con defaults): `PAPER_TOTAL` (40), `PRINTING_TIMEOUT_S` (180, recuperación de cola trabada), `AGENT_STALE_S` (30, umbral de “agente sin señal”).
+
+`.env.example` (raíz y `backend/`) tiene solo placeholders. **La clave de impresora y la del panel nunca se commitean**: van como variables de entorno en cada plataforma. El backend **se niega a arrancar** (fail-fast) si falta `PRINTER_KEY`, `PANEL_PASSWORD` o `FRONTEND_ORIGIN`.
+
+## Robustez para el evento en vivo
+El sistema está endurecido para una noche sin nadie corrigiendo: idempotencia por subida (doble tap no duplica), reintentos con backoff, SQLite en WAL, recuperación automática de cola trabada, interruptores de pausa (subidas/impresión) y heartbeat del agente en el panel, fuentes autohospedadas y logging para diagnosticar en vivo. Detalle en **`docs/HARDENING-REPORT.md`**. Antes del evento, cerrar **`docs/EVENT-CHECKLIST.md`** (impresora, sign-off visual, envs, HEIC en iPhone). Verificación reproducible en **`tests/`**.
 
 ## Agente de impresión
-Es un **repo separado**. Se construye contra `docs/API-CONTRACT.md`: hace polling a `GET /api/agent/next` con `Authorization: Bearer PRINTER_KEY`, descarga el PNG de `image_url`, lo imprime en la Canon SELPHY y reporta con `POST /api/agent/jobs/{id}/status`.
+Es un **repo separado**. Se construye contra `docs/API-CONTRACT.md`: late con `POST /api/agent/heartbeat`, hace polling a `GET /api/agent/next` con `Authorization: Bearer PRINTER_KEY` (recibe `204` si no hay cola o si la impresión está en pausa), descarga el PNG de `image_url`, lo imprime en la Canon SELPHY y reporta con `POST /api/agent/jobs/{id}/status`.

@@ -17,9 +17,24 @@ class StatusUpdate(BaseModel):
     status: str  # "printed" | "failed"
 
 
+@router.post("/heartbeat")
+def heartbeat():
+    """El agente late para que el panel sepa que la impresora sigue conectada."""
+    models.touch_agent()
+    return {"ok": True}
+
+
 @router.get("/next")
 def next_job(response: Response):
-    """Toma atómicamente el trabajo en cola más antiguo y lo pasa a 'printing'."""
+    """Toma atómicamente el trabajo en cola más antiguo y lo pasa a 'printing'.
+
+    Pedir trabajo también cuenta como señal de vida del agente. Si el staff pausó
+    la impresión, responde 204 (no entrega nada) sin tocar la cola.
+    """
+    models.touch_agent()
+    if models.printing_paused():
+        response.status_code = 204
+        return response
     job = models.claim_next()
     if job is None:
         response.status_code = 204

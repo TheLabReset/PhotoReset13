@@ -9,6 +9,10 @@ from PIL import Image
 
 from .config import DATA_DIR, EXPECTED_H, EXPECTED_W
 
+# Guarda contra "decompression bombs": nunca decodificar más píxeles de los que
+# el marco final puede tener (1200x1800 con algo de margen).
+Image.MAX_IMAGE_PIXELS = EXPECTED_W * EXPECTED_H * 2
+
 
 def _photos_dir() -> str:
     d = os.path.join(DATA_DIR, "photos")
@@ -24,11 +28,12 @@ class InvalidImage(Exception):
     pass
 
 
-def save_png(job_id: str, raw: bytes) -> None:
-    """Valida que sea un PNG de 1200x1800 y lo reencodea por seguridad.
+def validate_and_clean(raw: bytes) -> Image.Image:
+    """Valida que sea un PNG de 1200x1800 y devuelve una copia RGB limpia.
 
-    No recompone ni redimensiona el contenido: solo verifica y regraba los
-    pixeles tal cual, descartando cualquier metadato potencialmente malicioso.
+    No recompone ni redimensiona: solo verifica y descarta metadatos. Se llama
+    ANTES de crear el trabajo, así una imagen inválida no deja un registro colgado
+    en la cola (que luego el agente reclamaría y no encontraría archivo).
     """
     try:
         img = Image.open(io.BytesIO(raw))
@@ -44,10 +49,13 @@ def save_png(job_id: str, raw: bytes) -> None:
             f"llegó {img.size[0]}x{img.size[1]}"
         )
 
-    # Reencode limpio (sin metadatos).
     clean = Image.new("RGB", img.size)
     clean.paste(img.convert("RGB"))
-    clean.save(photo_path(job_id), format="PNG")
+    return clean
+
+
+def write_image(job_id: str, img: Image.Image) -> None:
+    img.save(photo_path(job_id), format="PNG")
 
 
 def read_png(job_id: str) -> Optional[bytes]:

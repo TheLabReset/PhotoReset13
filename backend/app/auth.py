@@ -1,15 +1,19 @@
 """Verificación de tokens Bearer para agente y panel."""
 import hmac
+import re
 
 from fastapi import Header, HTTPException
 
 from .config import PANEL_PASSWORD, PRINTER_KEY
 
+_BEARER_RE = re.compile(r"bearer\s+(.+)", re.IGNORECASE)
+
 
 def _extract_bearer(authorization: str | None) -> str:
-    if not authorization or not authorization.lower().startswith("bearer "):
+    m = _BEARER_RE.match(authorization or "")
+    if not m:
         raise HTTPException(status_code=401, detail="Falta el token Bearer")
-    return authorization[7:].strip()
+    return m.group(1).strip()
 
 
 def _check(token: str, expected: str) -> None:

@@ -31,9 +31,3 @@ export function consumePhoto(): number {
   setPhotosLeft(next)
   return next
 }
-
-// Solo para la demo / botón "reiniciar".
-export function resetPhotos(): number {
-  setPhotosLeft(DEFAULT_PHOTOS)
-  return DEFAULT_PHOTOS
-}

@@ -1,0 +1,9 @@
+/* Fuentes autohospedadas (subset latin, woff2). No dependemos del CDN de
+   Google la noche del evento. Archivos en /fonts/. */
+@font-face{font-family:'Anton';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/anton-400.woff2') format('woff2')}
+@font-face{font-family:'Creepster';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/creepster-400.woff2') format('woff2')}
+@font-face{font-family:'Permanent Marker';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/permanent-marker-400.woff2') format('woff2')}
+@font-face{font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/press-start-2p-400.woff2') format('woff2')}
+@font-face{font-family:'Rubik Wet Paint';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/rubik-wet-paint-400.woff2') format('woff2')}
+/* Space Grotesk es fuente variable: un solo woff2 cubre 400–700. */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/space-grotesk.woff2') format('woff2')}

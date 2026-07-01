@@ -1,35 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import StatusBar from '../components/StatusBar'
 import {
-  absoluteUrl,
+  fetchThumb,
   getQueue,
   panelLogin,
   reprintJob,
+  setPause,
   skipJob,
   type QueueResponse,
 } from '../lib/api'
 
-// Panel de operador (ruta /panel). Login con clave (PANEL_PASSWORD en el
-// backend), luego cola en vivo con miniaturas, saltar y reimprimir, e
-// indicador de papel. Mismo skin, más utilitario.
+// Panel de operador (ruta /panel). Login con clave (PANEL_PASSWORD), luego cola
+// en vivo con miniaturas (autenticadas), saltar/reimprimir/reencolar, indicador
+// de papel, estado del agente (heartbeat) e interruptores de pausa.
 export default function PanelApp() {
   const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
   const [clave, setClave] = useState('')
   const [claveErr, setClaveErr] = useState(false)
+  const [loggingIn, setLoggingIn] = useState(false)
   const [data, setData] = useState<QueueResponse | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [thumbs, setThumbs] = useState<Record<string, string>>({})
+  const thumbsRef = useRef<Record<string, string>>({})
   const timer = useRef<number | null>(null)
 
-  const refresh = useCallback(
-    async (pw: string) => {
-      try {
-        setData(await getQueue(pw))
-      } catch {
-        /* mantener lo último mostrado */
-      }
-    },
-    [],
-  )
+  const refresh = useCallback(async (pw: string) => {
+    try {
+      const d = await getQueue(pw)
+      setData(d)
+      setErr(null)
+    } catch {
+      setErr('Se perdió la conexión con el servidor. Reintentando…')
+    }
+  }, [])
 
   useEffect(() => {
     if (!authed) return
@@ -40,19 +44,77 @@ export default function PanelApp() {
     }
   }, [authed, password, refresh])
 
+  // Cargar miniaturas faltantes (fetch con Bearer -> object URL). Cachea por id.
+  useEffect(() => {
+    if (!authed || !data) return
+    let cancelled = false
+    ;(async () => {
+      for (const j of data.jobs) {
+        if (thumbsRef.current[j.id]) continue
+        try {
+          const url = await fetchThumb(j.thumb_url, password)
+          if (cancelled) {
+            URL.revokeObjectURL(url)
+            return
+          }
+          thumbsRef.current = { ...thumbsRef.current, [j.id]: url }
+          setThumbs(thumbsRef.current)
+        } catch {
+          /* miniatura opcional */
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authed, data, password])
+
+  // Revocar todos los object URLs al desmontar.
+  useEffect(() => {
+    return () => {
+      Object.values(thumbsRef.current).forEach((u) => URL.revokeObjectURL(u))
+    }
+  }, [])
+
   async function login() {
-    const ok = await panelLogin(clave.trim())
-    if (ok) {
-      setPassword(clave.trim())
-      setAuthed(true)
-      setClaveErr(false)
-    } else {
+    setLoggingIn(true)
+    try {
+      const ok = await panelLogin(clave.trim())
+      if (ok) {
+        setPassword(clave.trim())
+        setAuthed(true)
+        setClaveErr(false)
+      } else {
+        setClaveErr(true)
+      }
+    } catch {
       setClaveErr(true)
+      setErr('No se pudo contactar al servidor.')
+    } finally {
+      setLoggingIn(false)
     }
   }
 
   function goHome() {
     window.location.href = '/'
+  }
+
+  async function act(fn: () => Promise<void>, label: string) {
+    try {
+      await fn()
+      await refresh(password)
+    } catch {
+      setErr(`No se pudo ${label}. Reintenta.`)
+    }
+  }
+
+  async function togglePause(target: 'uploads' | 'printing', next: boolean) {
+    try {
+      await setPause(target, next, password)
+      await refresh(password)
+    } catch {
+      setErr('No se pudo cambiar la pausa.')
+    }
   }
 
   if (!authed) {
@@ -99,11 +161,11 @@ export default function PanelApp() {
                 marginTop: -8,
               }}
             >
-              Clave incorrecta, pe.
+              {err || 'Clave incorrecta, pe.'}
             </div>
           )}
-          <button className="btn" style={{ fontSize: 20 }} onClick={login}>
-            ENTRAR
+          <button className="btn" style={{ fontSize: 20 }} onClick={login} disabled={loggingIn}>
+            {loggingIn ? 'ENTRANDO…' : 'ENTRAR'}
           </button>
         </div>
       </div>
@@ -113,6 +175,8 @@ export default function PanelApp() {
   const jobs = data?.jobs ?? []
   const paperTotal = data?.paper.total ?? 40
   const paperLeft = data?.paper.left ?? paperTotal
+  const controls = data?.controls ?? { uploads_paused: false, printing_paused: false }
+  const agent = data?.agent
 
   return (
     <div className="scr grain" key="queue">
@@ -143,6 +207,57 @@ export default function PanelApp() {
           </div>
         </div>
       </div>
+
+      {/* estado del agente + interruptores */}
+      <div
+        style={{
+          padding: '10px 18px',
+          borderBottom: '2px solid #2a201f',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: '50%',
+              flex: 'none',
+              background: agent?.alive ? 'var(--veneno)' : 'var(--sangre)',
+              boxShadow: agent?.alive ? '0 0 6px var(--veneno)' : 'none',
+            }}
+          />
+          <span style={{ font: "400 11px 'Space Grotesk'", color: '#b7ada6' }}>
+            {agent?.alive
+              ? 'Impresora conectada'
+              : agent?.seconds_ago != null
+                ? `Agente sin señal (hace ${agent.seconds_ago}s)`
+                : 'Agente nunca visto'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="qbtn"
+            style={pauseBtnStyle(controls.printing_paused)}
+            onClick={() => togglePause('printing', !controls.printing_paused)}
+          >
+            {controls.printing_paused ? '▶ reanudar impresión' : '⏸ pausar impresión'}
+          </button>
+          <button
+            className="qbtn"
+            style={pauseBtnStyle(controls.uploads_paused)}
+            onClick={() => togglePause('uploads', !controls.uploads_paused)}
+          >
+            {controls.uploads_paused ? '▶ reanudar subidas' : '⏸ pausar subidas'}
+          </button>
+        </div>
+        {err && (
+          <div style={{ color: 'var(--brasa)', font: "500 10px 'Space Grotesk'" }}>{err}</div>
+        )}
+      </div>
+
       <div style={{ flex: 1, overflow: 'auto' }}>
         {jobs.length === 0 ? (
           <div
@@ -183,11 +298,13 @@ export default function PanelApp() {
                     position: 'relative',
                   }}
                 >
-                  <img
-                    src={absoluteUrl(q.thumb_url)}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  {thumbs[q.id] && (
+                    <img
+                      src={thumbs[q.id]}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: 'var(--hueso)', fontWeight: 700, fontSize: 14 }}>
@@ -195,19 +312,20 @@ export default function PanelApp() {
                   </div>
                   <div style={statusStyle(q.status)}>{statusLabel(q.status)}</div>
                 </div>
-                {done ? (
+                {printing ? (
+                  <button className="qbtn" onClick={() => act(() => reprintJob(q.id, password), 'reencolar')}>
+                    reencolar
+                  </button>
+                ) : done ? (
                   <button
                     className="qbtn"
                     style={{ borderColor: 'var(--veneno)', color: 'var(--veneno)' }}
-                    onClick={() => reprintJob(q.id, password).then(() => refresh(password))}
+                    onClick={() => act(() => reprintJob(q.id, password), 'reimprimir')}
                   >
                     reimprimir
                   </button>
                 ) : (
-                  <button
-                    className="qbtn"
-                    onClick={() => skipJob(q.id, password).then(() => refresh(password))}
-                  >
+                  <button className="qbtn" onClick={() => act(() => skipJob(q.id, password), 'saltar')}>
                     saltar
                   </button>
                 )}
@@ -218,6 +336,12 @@ export default function PanelApp() {
       </div>
     </div>
   )
+}
+
+function pauseBtnStyle(active: boolean): React.CSSProperties {
+  return active
+    ? { borderColor: 'var(--brasa)', color: 'var(--brasa)', fontSize: 11 }
+    : { fontSize: 11 }
 }
 
 function statusLabel(status: string): string {

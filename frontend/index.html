@@ -7,14 +7,13 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#120E0E" />
+    <link rel="icon" type="image/png" href="/brand/reset-r-sangre.png" />
     <title>13 años Reset · Deja tu foto</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Creepster&family=Rubik+Wet+Paint&family=Permanent+Marker&family=Press+Start+2P&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fuentes autohospedadas (ver src/styles/fonts.css). No dependemos del
+         CDN de Google la noche del evento. Precargamos las de mayor impacto. -->
+    <link rel="preload" href="/fonts/anton-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

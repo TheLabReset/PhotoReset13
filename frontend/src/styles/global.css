@@ -13,7 +13,7 @@ body {
   height: 100%;
 }
 #root {
-  min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
@@ -81,23 +81,6 @@ body {
 .halftone {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.6px);
   background-size: 7px 7px;
-}
-
-.statusbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 24px 8px;
-  font: 700 12px var(--f-cuerpo);
-  color: var(--hueso);
-  position: relative;
-  z-index: 20;
-  flex: none;
-}
-.statusbar .dots {
-  font-family: var(--f-pixel);
-  font-size: 7px;
-  letter-spacing: 1px;
 }
 
 .pbody {
@@ -274,39 +257,8 @@ body {
   border-radius: 2px;
 }
 
-/* ---- marco de preview (confirmación / éxito) ---- */
-.pf {
-  position: relative;
-  background: #000;
-  border-radius: 3px;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-}
-.pf .win {
-  position: absolute;
-  overflow: hidden;
-  background: #000;
-}
-.pf .band-t {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.pf .band-b {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+/* La confirmación/éxito muestran el PNG compuesto real (1200×1800) en un <img>:
+   el preview ES la impresión. No hay marco de preview separado en el DOM. */
 
 /* ---- links discretos ---- */
 .link {
@@ -346,9 +298,10 @@ input[type='range'] {
 }
 
 /* ---- animaciones ---- */
+/* Transición entre pantallas: translateY + .34s (sin fade), igual al prototipo. */
 @keyframes screenIn {
   from {
-    opacity: 0;
+    opacity: 1;
     transform: translateY(8px);
   }
   to {
@@ -358,7 +311,7 @@ input[type='range'] {
 }
 @keyframes rise {
   from {
-    opacity: 0;
+    opacity: 1;
     transform: translateY(8px);
   }
   to {
