@@ -8,7 +8,7 @@ from .. import models
 from ..auth import require_panel_password
 from ..config import PANEL_PASSWORD, PAPER_TOTAL
 from ..logging_setup import get_logger
-from ..storage import read_png
+from ..storage import delete_photo, read_png
 
 router = APIRouter(prefix="/api/panel", tags=["panel"])
 log = get_logger("panel")
@@ -79,6 +79,18 @@ def pause(body: PauseBody):
         "uploads_paused": models.uploads_paused(),
         "printing_paused": models.printing_paused(),
     }
+
+
+@router.post("/reset", dependencies=[Depends(require_panel_password)])
+def reset():
+    """Limpia la cola: borra todos los trabajos y sus PNG. Deja las cuentas en
+    cero (impresas/fallidas/en cola). Útil para arrancar limpio antes del evento."""
+    ids = [j["id"] for j in models.list_jobs()]
+    for jid in ids:
+        delete_photo(jid)
+    deleted = models.clear_all_jobs()
+    log.warning("panel: reset de la cola (%d borrados)", deleted)
+    return {"deleted": deleted}
 
 
 @router.post("/jobs/{job_id}/skip", dependencies=[Depends(require_panel_password)])

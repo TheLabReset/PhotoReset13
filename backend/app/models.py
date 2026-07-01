@@ -201,6 +201,17 @@ def reprint(job_id: str) -> Optional[dict]:
     return get_job(job_id)
 
 
+def clear_all_jobs() -> int:
+    """Borra todos los trabajos de la cola (para limpiar datos de prueba antes
+    del evento). Los PNG en disco los borra el router. Devuelve cuántos había."""
+    with connect() as conn:
+        n = conn.execute("SELECT COUNT(*) AS n FROM jobs").fetchone()["n"]
+        conn.execute("DELETE FROM jobs")
+        conn.commit()
+    log.warning("cola reseteada: %d trabajo(s) borrado(s)", n)
+    return int(n)
+
+
 def counts() -> dict:
     with connect() as conn:
         rows = conn.execute("SELECT status, COUNT(*) AS n FROM jobs GROUP BY status").fetchall()

@@ -89,6 +89,9 @@ Interruptores de emergencia. Pausar impresión → el agente recibe `204` en `/n
 - **Body**: `{ "target": "uploads" | "printing", "paused": <bool> }`.
 - **200** → `{ "uploads_paused", "printing_paused" }`.
 
+### `POST /api/panel/reset`
+Limpia la cola: borra **todos** los trabajos y sus PNG (deja impresas/fallidas/en cola en cero). Para arrancar limpio antes del evento. **200** → `{ "deleted": <int> }`.
+
 ### `POST /api/panel/jobs/{id}/skip`
 Marca `skipped`. **200** → `{ "id", "status" }`.
 

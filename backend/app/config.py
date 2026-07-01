@@ -16,7 +16,7 @@ EXPECTED_W = 1200
 EXPECTED_H = 1800
 
 # Capacidad de papel (para el indicador del panel).
-PAPER_TOTAL = int(os.environ.get("PAPER_TOTAL", "40"))
+PAPER_TOTAL = int(os.environ.get("PAPER_TOTAL", "120"))
 
 # Un trabajo en 'printing' por más de esto se considera trabado y vuelve a la
 # cola (recuperación de cola congelada si el agente muere/se reinicia).

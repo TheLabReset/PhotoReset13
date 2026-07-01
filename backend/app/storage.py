@@ -64,3 +64,12 @@ def read_png(job_id: str) -> Optional[bytes]:
         return None
     with open(path, "rb") as f:
         return f.read()
+
+
+def delete_photo(job_id: str) -> None:
+    path = photo_path(job_id)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass

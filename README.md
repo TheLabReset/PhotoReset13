@@ -100,7 +100,7 @@ En la **UI de Netlify** setea la variable de entorno (no se commitea):
 | `DATA_DIR` | backend (Railway) | Volumen para PNGs + SQLite (`/data`) |
 | `VITE_API_BASE_URL` | frontend (Netlify) | URL pública del backend |
 
-Opcionales del backend (con defaults): `PAPER_TOTAL` (40), `PRINTING_TIMEOUT_S` (180, recuperación de cola trabada), `AGENT_STALE_S` (30, umbral de “agente sin señal”).
+Opcionales del backend (con defaults): `PAPER_TOTAL` (120), `PRINTING_TIMEOUT_S` (180, recuperación de cola trabada), `AGENT_STALE_S` (30, umbral de “agente sin señal”).
 
 `.env.example` (raíz y `backend/`) tiene solo placeholders. **La clave de impresora y la del panel nunca se commitean**: van como variables de entorno en cada plataforma. El backend **se niega a arrancar** (fail-fast) si falta `PRINTER_KEY`, `PANEL_PASSWORD` o `FRONTEND_ORIGIN`.
 
