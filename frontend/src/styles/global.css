@@ -1,0 +1,407 @@
+/* ============================================================
+   13 AÑOS RESET — estilos globales
+   Portados con fidelidad desde docs/design-handoff/prototipo-13-reset.dc.html
+   Los tokens viven en tokens.css (pieza viva del handoff).
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--tinta);
+  background-image: radial-gradient(circle at 50% -10%, var(--tinta-2) 0%, var(--tinta) 62%);
+  font-family: var(--f-cuerpo);
+  color: var(--hueso);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* La app es una sola "pantalla" mobile-first. En desktop la centramos
+   dentro de un marco de teléfono, igual que la vitrina del handoff. */
+.stage {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.phone {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  background: var(--tinta);
+  position: relative;
+  overflow: hidden;
+}
+@media (min-width: 480px) {
+  .stage {
+    padding: 28px 12px;
+  }
+  .phone {
+    height: 860px;
+    min-height: 0;
+    max-width: 400px;
+    border-radius: var(--r-phone);
+    border: 3px solid #000;
+    box-shadow: 0 2px 0 #000, 0 30px 60px -20px rgba(0, 0, 0, 0.95),
+      inset 0 0 0 2px #2a201f;
+  }
+}
+
+/* ---- pantallas ---- */
+.scr {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: screenIn 0.34s ease both;
+}
+
+/* ---- texturas obligatorias (rompen el look de IA) ---- */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.11;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.halftone {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1.6px);
+  background-size: 7px 7px;
+}
+
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 24px 8px;
+  font: 700 12px var(--f-cuerpo);
+  color: var(--hueso);
+  position: relative;
+  z-index: 20;
+  flex: none;
+}
+.statusbar .dots {
+  font-family: var(--f-pixel);
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+
+.pbody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+  padding: 8px var(--pad-screen) var(--pad-screen);
+  min-height: 0;
+}
+
+/* ---- roles tipográficos ---- */
+.t-anton {
+  font-family: var(--f-impacto);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.t-creep {
+  font-family: var(--f-horror);
+}
+.t-drip {
+  font-family: var(--f-drip);
+}
+.t-marker {
+  font-family: var(--f-plumon);
+}
+.t-pixel {
+  font-family: var(--f-pixel);
+  line-height: 1.5;
+}
+
+/* ---- botones ---- */
+.btn {
+  font-family: var(--f-impacto);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: var(--sangre);
+  border: var(--bd);
+  border-radius: var(--r-btn);
+  padding: 17px 20px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #000, 0 5px 0 2px var(--sangre-2);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  user-select: none;
+  display: block;
+  width: 100%;
+  font-size: 22px;
+}
+.btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #000;
+}
+.btn.gh {
+  background: transparent;
+  color: var(--hueso);
+  box-shadow: none;
+  border-color: var(--linea);
+}
+.btn.gh:active {
+  transform: translateY(2px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.btn.brasa {
+  background: var(--brasa);
+  box-shadow: 0 5px 0 #000, 0 5px 0 2px #b93d18;
+}
+
+/* ---- stickers decorativos (en bordes, nunca sobre texto/controles) ---- */
+.stk {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+}
+.ball8 {
+  border-radius: 50%;
+  background: #0a0a0a;
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.ball8 i {
+  border-radius: 50%;
+  background: var(--hueso);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 12px var(--f-cuerpo);
+  font-style: normal;
+}
+.seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-family: var(--f-horror);
+  transform: rotate(-9deg);
+}
+.pxheart {
+  width: 4px;
+  height: 4px;
+  background: var(--sangre);
+  box-shadow: 8px 0, 16px 0, -8px 0 0 0 var(--sangre), 0 8px, 8px 8px, 16px 8px,
+    -8px 8px, -16px 8px, 24px 8px, 0 16px, 8px 16px, 16px 16px, -8px 16px,
+    -16px 16px, 24px 16px, 0 24px, 8px 24px, -8px 24px, 16px 24px, 0 32px, 8px 32px;
+}
+.tag {
+  display: inline-block;
+  font: 700 10px var(--f-cuerpo);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brasa);
+  border: 1.5px solid var(--brasa);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+/* Logo R — la variante hueso (clara) va sobre fondos oscuros */
+.logoR {
+  background-image: url('/brand/reset-r-hueso.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* ---- inputs ---- */
+.inp {
+  background: #0d0a0a;
+  border: 2.5px solid var(--linea);
+  border-radius: var(--r-btn);
+  color: var(--hueso);
+  font-family: var(--f-cuerpo);
+  font-size: 16px;
+  padding: 16px;
+  width: 100%;
+  outline: none;
+}
+.inp:focus {
+  border-color: var(--sangre);
+}
+
+/* ---- barra de progreso a rayas ---- */
+.pbar {
+  height: 22px;
+  border: 2px solid #000;
+  background: #0d0a0a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pbar i {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(45deg, var(--sangre) 0 8px, var(--sangre-2) 8px 16px);
+  transition: width 0.28s ease;
+}
+
+/* ---- ventana de recorte ---- */
+.cropwin {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  border-radius: 2px;
+}
+
+/* ---- marco de preview (confirmación / éxito) ---- */
+.pf {
+  position: relative;
+  background: #000;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.pf .win {
+  position: absolute;
+  overflow: hidden;
+  background: #000;
+}
+.pf .band-t {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pf .band-b {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- links discretos ---- */
+.link {
+  background: none;
+  border: none;
+  color: var(--texto-3);
+  font: 500 11px var(--f-cuerpo);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* ---- filas de cola (panel) ---- */
+.qrow {
+  display: flex;
+  gap: 12px;
+  padding: 13px 16px;
+  align-items: center;
+  border-top: 1px solid #221a19;
+}
+.qbtn {
+  font-family: var(--f-impacto);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 2px solid var(--linea);
+  background: transparent;
+  color: var(--hueso);
+  border-radius: 3px;
+  padding: 7px 11px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---- zoom slider ---- */
+input[type='range'] {
+  accent-color: var(--sangre);
+}
+
+/* ---- animaciones ---- */
+@keyframes screenIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes stamp {
+  0% {
+    transform: scale(1.12) rotate(-9deg);
+  }
+  100% {
+    transform: scale(1) rotate(-9deg);
+  }
+}
+@keyframes flick {
+  0%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.35;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+}

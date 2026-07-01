@@ -1,0 +1,28 @@
+# dependencias
+node_modules/
+
+# builds
+dist/
+frontend/dist/
+
+# entorno / secretos (nunca commitear claves)
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# datos locales del backend (PNGs + SQLite)
+data/
+backend/data/
+
+# config local del agente de impresión
+agent.local.*
+*.agent.local
+
+# sistema
+.DS_Store
