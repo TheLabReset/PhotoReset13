@@ -128,7 +128,12 @@ export interface AgentStatus {
 export interface QueueResponse {
   jobs: QueueJob[]
   counts: { total: number; printed: number; queued: number; printing: number }
-  paper: { total: number; left: number }
+  // Cartucho KP-108IN (papel + tinta son el mismo consumible). 'left'/'low'
+  // alimentan el aviso de cambiar cartucho; 'prints_since_cartridge' lo reporta
+  // el agente por heartbeat.
+  paper: { total: number; left: number; low: boolean; prints_since_cartridge: number }
+  // 'uploads_paused' lo comanda el panel; 'printing_paused' es solo un reflejo
+  // de lo que reporta el agente (el panel NO pausa la impresión remotamente).
   controls: { uploads_paused: boolean; printing_paused: boolean }
   agent: AgentStatus
 }
@@ -174,14 +179,12 @@ export async function reprintJob(id: string, password: string): Promise<void> {
   await panelFetch(`/api/panel/jobs/${id}/reprint`, password, { method: 'POST' })
 }
 
-export async function setPause(
-  target: 'uploads' | 'printing',
-  paused: boolean,
-  password: string,
-): Promise<void> {
+// El panel solo comanda la pausa de SUBIDAS de invitados. La pausa de impresión
+// la gobierna el agente localmente y el panel solo la refleja (controls.printing_paused).
+export async function setUploadsPaused(paused: boolean, password: string): Promise<void> {
   await panelFetch('/api/panel/pause', password, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target, paused }),
+    body: JSON.stringify({ target: 'uploads', paused }),
   })
 }

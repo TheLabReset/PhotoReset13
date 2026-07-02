@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from .. import models
 from ..auth import require_panel_password
-from ..config import PANEL_PASSWORD, PAPER_TOTAL
+from ..config import PANEL_PASSWORD, PAPER_LOW_THRESHOLD, PAPER_TOTAL
 from ..logging_setup import get_logger
 from ..storage import delete_photo, read_png
 
@@ -19,7 +19,9 @@ class LoginBody(BaseModel):
 
 
 class PauseBody(BaseModel):
-    target: str  # "uploads" | "printing"
+    # El panel SOLO comanda la pausa de SUBIDAS (uploads). La pausa de impresión
+    # la gobierna el agente localmente; el panel solo la refleja (ver /queue).
+    target: str = "uploads"
     paused: bool
 
 
@@ -37,7 +39,11 @@ def login(body: LoginBody):
 def queue():
     jobs = models.list_jobs()
     c = models.counts()
-    paper_left = max(0, PAPER_TOTAL - c["printed"])
+    # Papel y tinta son el mismo consumible (cartucho KP-108IN): lo que queda se
+    # calcula con las impresiones que el agente reporta desde el último cambio.
+    since = models.prints_since_cartridge()
+    paper_left = max(0, PAPER_TOTAL - since)
+    paper_low = paper_left <= PAPER_LOW_THRESHOLD
     return {
         "jobs": [
             {
@@ -52,8 +58,17 @@ def queue():
             for j in jobs
         ],
         "counts": c,
-        "paper": {"total": PAPER_TOTAL, "left": paper_left},
+        # Cartucho KP-108IN (papel + tinta). 'left' y 'low' alimentan el aviso de
+        # "cambiar cartucho" del panel. 'prints_since_cartridge' viene del agente.
+        "paper": {
+            "total": PAPER_TOTAL,
+            "left": paper_left,
+            "low": paper_low,
+            "prints_since_cartridge": since,
+        },
         "controls": {
+            # 'uploads_paused' lo comanda el panel; 'printing_paused' es SOLO un
+            # reflejo de lo que reporta el agente (no se comanda desde el panel).
             "uploads_paused": models.uploads_paused(),
             "printing_paused": models.printing_paused(),
         },
@@ -71,10 +86,15 @@ def job_image(job_id: str):
 
 @router.post("/pause", dependencies=[Depends(require_panel_password)])
 def pause(body: PauseBody):
-    """Interruptores de emergencia: pausar subidas y/o impresión."""
-    if body.target not in ("uploads", "printing"):
-        raise HTTPException(status_code=400, detail="target inválido")
-    models.set_paused(body.target, body.paused)
+    """Pausa/reanuda las SUBIDAS de invitados (flag del backend). La pausa de
+    impresión NO se comanda aquí: la gobierna el agente localmente y el panel solo
+    la refleja en /queue (controls.printing_paused)."""
+    if body.target != "uploads":
+        raise HTTPException(
+            status_code=400,
+            detail="El panel solo pausa 'uploads'; la impresión la gobierna el agente.",
+        )
+    models.set_paused("uploads", body.paused)
     return {
         "uploads_paused": models.uploads_paused(),
         "printing_paused": models.printing_paused(),
