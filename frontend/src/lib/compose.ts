@@ -51,6 +51,24 @@ export async function loadOrientedBitmap(file: Blob): Promise<ImageBitmap> {
   }
 }
 
+// Cache de imágenes de stickers PNG (solo se cachea el éxito).
+const stickerCache: Record<string, HTMLImageElement> = {}
+function loadStickerImg(file: string): Promise<HTMLImageElement | null> {
+  if (stickerCache[file]) return Promise.resolve(stickerCache[file])
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      stickerCache[file] = img
+      resolve(img)
+    }
+    img.onerror = () => {
+      console.warn('[compose] no se pudo cargar el sticker', file)
+      resolve(null)
+    }
+    img.src = '/stickers/' + file
+  })
+}
+
 let logoCache: HTMLImageElement | null = null
 // El logo hueso (blanco) va sobre marco negro Y rojo (ver handoff §Assets).
 // Solo cacheamos el éxito: si falla, se reintenta en la próxima foto (no dejar
@@ -90,6 +108,17 @@ export async function composePrint(params: ComposeParams): Promise<ComposeResult
   const fontsOk = await ensureFontsReady()
   if (!fontsOk) console.warn('[compose] componiendo sin garantía de fuentes horneadas')
   const logo = await loadLogo()
+
+  // Cargar solo los PNG de stickers que esta foto va a hornear.
+  const stickerImgs: Record<string, HTMLImageElement> = {}
+  await Promise.all(
+    style.placements
+      .filter((p) => p.file)
+      .map(async (p) => {
+        const img = await loadStickerImg(p.file!)
+        if (img) stickerImgs[p.file!] = img
+      }),
+  )
 
   const wx = BS
   const wy = BT
@@ -149,7 +178,7 @@ export async function composePrint(params: ComposeParams): Promise<ComposeResult
   }
 
   // Punto crítico #3: hornear exactamente los stickers ya decididos.
-  drawStickers(x, { wx, wy, ww, wh }, style)
+  drawStickers(x, { wx, wy, ww, wh }, style, stickerImgs)
 
   const blob = await canvasToBlob(cv)
   const dataUrl = cv.toDataURL('image/png')

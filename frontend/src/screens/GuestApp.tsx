@@ -33,7 +33,7 @@ export default function GuestApp() {
   const bitmapRef = useRef<ImageBitmap | null>(null)
   const [crop, setCrop] = useState<CropArea>({ x: 0, y: 0, width: 0, height: 0 })
   const [name, setName] = useState('')
-  const [style, setStyle] = useState<PhotoStyle>({ frameRed: false, stk: 0 })
+  const [style, setStyle] = useState<PhotoStyle>({ frameRed: false, placements: [] })
   const [lowRes, setLowRes] = useState(false)
 
   const [composed, setComposed] = useState<ComposeResult | null>(null)
