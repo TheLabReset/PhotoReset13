@@ -40,6 +40,11 @@ export interface PhotoStyle {
 
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
 
+// Escala por sticker (algunos leen muy grandes). 1 = tamaño base.
+const SIZE_SCALE: Record<string, number> = {
+  'juventud-experiencia.png': 0.68,
+}
+
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
 }
@@ -74,7 +79,7 @@ export function pickPhotoStyle(): PhotoStyle {
     rot: rand(-14, 14),
     size:
       c.kind === 'png'
-        ? rand(300, 360) // ilustración: lado mayor
+        ? rand(300, 360) * (SIZE_SCALE[c.file!] ?? 1) // ilustración: lado mayor
         : c.kind === 'seal'
           ? rand(46, 54) // radio
           : c.kind === 'ball'
@@ -140,6 +145,11 @@ export interface WinGeom {
   wy: number
   ww: number
   wh: number
+  // Ancho de los bordes del marco (para dejar que el sticker sangre sobre ellos).
+  bl: number // izquierdo
+  br: number // derecho
+  bt: number // superior
+  bb: number // inferior
 }
 
 // Semi-ancho/alto que ocupa el sticker (para insetarlo dentro de la esquina).
@@ -162,14 +172,20 @@ export function drawStickers(
   imgs: Record<string, HTMLImageElement>,
 ) {
   const col = stickerColor(style.frameRed)
-  const margin = 18
+  const SAFE = 8 // no pegar el sticker al borde del lienzo
   for (const p of style.placements) {
     const img = p.file ? imgs[p.file] : undefined
     const { hw, hh } = halfSize(p, img)
-    const cx =
-      p.corner === 'tl' || p.corner === 'bl' ? g.wx + margin + hw : g.wx + g.ww - margin - hw
-    const cy =
-      p.corner === 'tl' || p.corner === 'tr' ? g.wy + margin + hh : g.wy + g.wh - margin - hh
+    const isLeft = p.corner === 'tl' || p.corner === 'bl'
+    const isTop = p.corner === 'tl' || p.corner === 'tr'
+    // "Sangrado": el sticker cruza el borde de la ventana y queda parte sobre el
+    // marco, parte sobre la foto. Se acota al ancho del borde (no salir del
+    // lienzo) y hacia abajo se sangra menos para no acercarse al nombre.
+    const bleedX = Math.min(0.3 * (hw * 2), g.bl - SAFE, g.br - SAFE)
+    const bleedTop = Math.min(0.3 * (hh * 2), g.bt - SAFE)
+    const bleedBot = Math.min(0.18 * (hh * 2), g.bb - SAFE, 45)
+    const cx = isLeft ? g.wx + hw - bleedX : g.wx + g.ww - hw + bleedX
+    const cy = isTop ? g.wy + hh - bleedTop : g.wy + g.wh - hh + bleedBot
     x.save()
     x.translate(cx, cy)
     x.rotate((p.rot * Math.PI) / 180)

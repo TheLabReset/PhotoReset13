@@ -178,7 +178,7 @@ export async function composePrint(params: ComposeParams): Promise<ComposeResult
   }
 
   // Punto crítico #3: hornear exactamente los stickers ya decididos.
-  drawStickers(x, { wx, wy, ww, wh }, style, stickerImgs)
+  drawStickers(x, { wx, wy, ww, wh, bl: BS, br: BS, bt: BT, bb: BB }, style, stickerImgs)
 
   const blob = await canvasToBlob(cv)
   const dataUrl = cv.toDataURL('image/png')
