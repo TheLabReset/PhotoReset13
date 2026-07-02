@@ -13,8 +13,13 @@ log = get_logger("queue")
 STATUSES = {"queued", "printing", "printed", "skipped", "failed"}
 
 # Claves de settings.
-S_UPLOADS_PAUSED = "uploads_paused"
-S_PRINTING_PAUSED = "printing_paused"
+S_UPLOADS_PAUSED = "uploads_paused"  # lo comanda el PANEL (flag del backend)
+# Estado de pausa de IMPRESIÓN que reporta el agente. El agente gobierna su
+# propia pausa localmente (por seguridad, para no quedar pausado si se cae la
+# red). El backend solo lo GUARDA y el panel lo REFLEJA; nadie lo comanda remoto.
+S_AGENT_PRINTING_PAUSED = "agent_printing_paused"
+# Impresiones desde el último cambio de cartucho (reportado por el agente).
+S_PRINTS_SINCE_CARTRIDGE = "prints_since_cartridge"
 S_AGENT_LAST_SEEN = "agent_last_seen"
 
 
@@ -232,17 +237,43 @@ def uploads_paused() -> bool:
 
 
 def printing_paused() -> bool:
-    return get_setting(S_PRINTING_PAUSED, "0") == "1"
+    """Refleja el estado que reporta el AGENTE (él manda su pausa localmente)."""
+    return get_setting(S_AGENT_PRINTING_PAUSED, "0") == "1"
+
+
+def prints_since_cartridge() -> int:
+    """Impresiones desde el último cambio de cartucho (reportado por el agente)."""
+    try:
+        return max(0, int(get_setting(S_PRINTS_SINCE_CARTRIDGE, "0")))
+    except (TypeError, ValueError):
+        return 0
 
 
 def set_paused(target: str, paused: bool) -> None:
-    key = S_UPLOADS_PAUSED if target == "uploads" else S_PRINTING_PAUSED
-    set_setting(key, "1" if paused else "0")
-    log.warning("%s %s", target, "PAUSED" if paused else "resumed")
+    """El panel SOLO puede pausar las SUBIDAS de invitados. La pausa de impresión
+    la gobierna el agente localmente (ver record_heartbeat); no se comanda remoto."""
+    if target != "uploads":
+        raise ValueError("solo se puede pausar 'uploads' desde el panel")
+    set_setting(S_UPLOADS_PAUSED, "1" if paused else "0")
+    log.warning("uploads %s", "PAUSED" if paused else "resumed")
 
 
 def touch_agent() -> None:
     set_setting(S_AGENT_LAST_SEEN, _iso(_now()))
+
+
+def record_heartbeat(
+    printing_paused: Optional[bool] = None,
+    prints_since_cartridge: Optional[int] = None,
+) -> None:
+    """Guarda el latido del agente y, si los trae, su estado de pausa de impresión
+    y el contador de cartucho. Backward-compatible: un heartbeat sin cuerpo solo
+    marca 'visto ahora'."""
+    touch_agent()
+    if printing_paused is not None:
+        set_setting(S_AGENT_PRINTING_PAUSED, "1" if printing_paused else "0")
+    if prints_since_cartridge is not None:
+        set_setting(S_PRINTS_SINCE_CARTRIDGE, str(max(0, int(prints_since_cartridge))))
 
 
 def agent_status() -> dict:

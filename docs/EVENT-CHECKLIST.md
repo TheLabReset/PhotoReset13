@@ -10,7 +10,10 @@ Lo que el código ya dejó verde está en `docs/HARDENING-REPORT.md`. Esto es lo
 - [ ] Verificar tamaño/encuadre: la impresión debe ser postal 100×148mm (1200×1776, ~305dpi), sin bordes vacíos.
 - [ ] Matar el agente a mitad de un trabajo y confirmar que, tras el timeout, ese trabajo vuelve a la cola y se reimprime (recuperación de cola trabada).
 - [ ] En el panel, ver que la impresora aparece como **“conectada”** cuando el agente late, y **“sin señal”** cuando lo apagas.
-- [ ] Probar los interruptores del panel: **pausar impresión** (deja de salir) y **reanudar**; **pausar subidas** (el invitado ve “en pausa”) y **reanudar**.
+- [ ] **Pausa de subidas** (lo único que comanda el panel): pausar → el invitado ve “EN PAUSA”; reanudar → vuelve a subir. Confirmar los dos sentidos.
+- [ ] **Pausa de impresión** (la gobierna el **agente**, no el panel): pausar el agente en su laptop y confirmar que el panel lo **refleja** (“IMPRESIÓN EN PAUSA (agente)”); reanudar y ver que vuelve a “ACTIVA”. El panel no tiene botón para pausar la impresión, es solo lectura. **Para destrabar una pausa de impresión: reanudar en el agente/impresora, NO en el panel** (el panel no puede reanudar la impresión remotamente, por diseño).
+- [ ] **Contador de cartucho**: con el agente reportando `prints_since_cartridge`, ver que el panel muestra “CARTUCHO left/108” y, cerca del final, el aviso **“cambiar cartucho KP-108IN”**. Al cambiar el cartucho el agente reinicia el contador y el panel vuelve a 108.
+- [ ] **Contadores** del panel separados y correctos: en cola / imprimiendo / impresas.
 
 > Nota: la prueba física de impresión es hardware y no se puede automatizar; por eso está acá.
 
@@ -26,8 +29,9 @@ Lo que el código ya dejó verde está en `docs/HARDENING-REPORT.md`. Esto es lo
 - [ ] `PANEL_PASSWORD` = clave del panel de operador (la que usa el staff).
 - [ ] `FRONTEND_ORIGIN` = URL exacta de Netlify (ej. `https://reset13.netlify.app`). **Sin barra final, sin `*`.**
 - [ ] `DATA_DIR` = `/data`.
-- [ ] (opcional) `PAPER_TOTAL`, `PRINTING_TIMEOUT_S`, `AGENT_STALE_S` si quieres cambiar los defaults.
+- [ ] (opcional) `PAPER_TOTAL` (default **108**, cartucho KP-108IN), `PAPER_LOW_THRESHOLD` (default 10), `PRINTING_TIMEOUT_S`, `AGENT_STALE_S` si quieres cambiar los defaults.
 - [ ] Confirmar que arranca: `/health` → `{"ok":true}`. (Si falta un secreto, **no arranca** a propósito.)
+- [ ] (opcional, **destructivo**) Vaciar la cola de pruebas antes de abrir: `curl -X POST "$API/api/panel/reset" -H "Authorization: Bearer $PANEL_PASSWORD"`. Borra todos los trabajos y sus PNG; hacerlo una sola vez y con cuidado (no hay botón en el panel a propósito).
 
 ### Netlify (frontend) — Base `frontend`
 - [ ] `VITE_API_BASE_URL` = URL pública del backend de Railway.

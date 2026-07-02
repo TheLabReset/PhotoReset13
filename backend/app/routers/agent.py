@@ -3,6 +3,8 @@
 El agente de impresión es un repo aparte que consume este contrato; no se
 construye aquí. Ver docs/API-CONTRACT.md.
 """
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
@@ -17,10 +19,22 @@ class StatusUpdate(BaseModel):
     status: str  # "printed" | "failed"
 
 
+class Heartbeat(BaseModel):
+    # El agente gobierna su pausa de impresión localmente y la reporta aquí; el
+    # backend solo la guarda para que el panel la refleje. Ambos campos opcionales
+    # para ser backward-compatible con agentes que aún mandan el heartbeat vacío.
+    printing_paused: Optional[bool] = None
+    prints_since_cartridge: Optional[int] = None
+
+
 @router.post("/heartbeat")
-def heartbeat():
-    """El agente late para que el panel sepa que la impresora sigue conectada."""
-    models.touch_agent()
+def heartbeat(body: Optional[Heartbeat] = None):
+    """El agente late para que el panel sepa que la impresora sigue conectada y,
+    de paso, sincroniza su estado de pausa de impresión y el contador de cartucho."""
+    if body is None:
+        models.touch_agent()
+    else:
+        models.record_heartbeat(body.printing_paused, body.prints_since_cartridge)
     return {"ok": True}
 
 
@@ -28,8 +42,9 @@ def heartbeat():
 def next_job(response: Response):
     """Toma atómicamente el trabajo en cola más antiguo y lo pasa a 'printing'.
 
-    Pedir trabajo también cuenta como señal de vida del agente. Si el staff pausó
-    la impresión, responde 204 (no entrega nada) sin tocar la cola.
+    Pedir trabajo también cuenta como señal de vida del agente. Si el agente
+    reportó su impresión en pausa, responde 204 (no entrega nada) sin tocar la
+    cola: así, si aún sondea estando pausado, no se le queda un trabajo trabado.
     """
     models.touch_agent()
     if models.printing_paused():

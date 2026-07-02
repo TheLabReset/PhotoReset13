@@ -15,8 +15,14 @@ PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "")
 EXPECTED_W = 1200
 EXPECTED_H = 1776
 
-# Capacidad de papel (para el indicador del panel).
-PAPER_TOTAL = int(os.environ.get("PAPER_TOTAL", "120"))
+# Capacidad del cartucho (papel + tinta son el MISMO consumible en la SELPHY:
+# el KP-108IN rinde 108 impresiones postales). El panel muestra lo que queda a
+# partir de las impresiones que el agente reporta desde el último cambio de
+# cartucho (prints_since_cartridge en el heartbeat).
+PAPER_TOTAL = int(os.environ.get("PAPER_TOTAL", "108"))
+
+# Aviso de cartucho bajo: cuando quedan <= esto, el panel pide cambiar el KP-108IN.
+PAPER_LOW_THRESHOLD = int(os.environ.get("PAPER_LOW_THRESHOLD", "10"))
 
 # Un trabajo en 'printing' por más de esto se considera trabado y vuelve a la
 # cola (recuperación de cola congelada si el agente muere/se reinicia).

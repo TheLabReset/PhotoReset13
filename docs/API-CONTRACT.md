@@ -39,11 +39,19 @@ curl -X POST "$API/api/jobs" -H "Idempotency-Key: $(uuidgen)" \
 ### `GET /api/agent/next`
 Toma **atómicamente** el trabajo `queued` más antiguo, lo pasa a `printing` y lo devuelve. La atomicidad (transacción `BEGIN IMMEDIATE`) evita imprimir dos veces. Antes de reclamar, recupera trabajos trabados (ver más abajo). Pedir trabajo **también cuenta como señal de vida** del agente.
 - **200** → `{ "id", "name", "image_url": "/api/agent/jobs/<id>/image" }`
-- **204** si no hay nada en cola **o si la impresión está en pausa** desde el panel.
+- **204** si no hay nada en cola **o si el agente reportó su impresión en pausa** (así, si sigue sondeando estando pausado, no se le queda un trabajo trabado en `printing`).
 
 ### `POST /api/agent/heartbeat`
-Latido para que el panel sepa que la impresora/agente sigue vivo. Llamar cada ~10s.
-- **200** → `{ "ok": true }`.
+Latido para que el panel sepa que la impresora/agente sigue vivo **y** para que sincronice su estado. Llamar cada ~10s.
+- **Body** (`application/json`, **opcional** — todos los campos opcionales, backward-compatible con heartbeat vacío):
+  - `printing_paused` (bool): el agente **gobierna su propia pausa de impresión localmente** (por seguridad, para no quedar pausado si se cae la red) y la reporta acá. El backend solo la **guarda**; el panel solo la **refleja** (nunca la comanda de forma remota).
+  - `prints_since_cartridge` (int ≥ 0): impresiones hechas desde el último cambio de cartucho **KP-108IN** (papel + tinta son el mismo consumible, 108 por cartucho). Alimenta el aviso de "cambiar cartucho" del panel. Al cambiar el cartucho, el agente reinicia este contador a 0.
+- **200** → `{ "ok": true }`. El backend guarda el último valor recibido de cada campo; un heartbeat sin cuerpo solo actualiza "visto ahora".
+
+```bash
+curl -X POST "$API/api/agent/heartbeat" -H "Authorization: Bearer $PRINTER_KEY" \
+  -H "Content-Type: application/json" -d '{"printing_paused": false, "prints_since_cartridge": 42}'
+```
 
 **Recuperación de cola trabada:** si un trabajo queda en `printing` y el agente muere/reinicia, tras `PRINTING_TIMEOUT_S` (default 180s) vuelve solo a `queued` en el siguiente `/next`. Al arrancar el backend también recupera. El panel puede reencolar manualmente (reprint).
 
@@ -75,7 +83,7 @@ Valida la clave antes de mostrar la cola en el front. **No** requiere header (re
     { "id", "name", "status", "thumb_url", "created_at" }
   ],
   "counts":   { "total", "printed", "queued", "printing" },
-  "paper":    { "total", "left" },
+  "paper":    { "total", "left", "low", "prints_since_cartridge" },
   "controls": { "uploads_paused", "printing_paused" },
   "agent":    { "last_seen", "seconds_ago", "alive" }
 }
@@ -83,16 +91,22 @@ Valida la clave antes de mostrar la cola en el front. **No** requiere header (re
 Orden: `printing` primero, luego `queued` (más antiguo primero), luego el resto.
 `thumb_url` es `/api/panel/jobs/<id>/image` (auth Bearer). El panel la carga con `fetch` + `Authorization` y arma un object URL — la clave **no** viaja en la URL (no queda en logs/historial).
 
+- **`paper`** — cartucho **KP-108IN** (papel + tinta son el mismo consumible): `total` = 108 (`PAPER_TOTAL`), `left` = `max(0, total − prints_since_cartridge)`, `low` = `left ≤ PAPER_LOW_THRESHOLD` (default 10) → el panel muestra el aviso de "cambiar cartucho". `prints_since_cartridge` viene del heartbeat del agente.
+- **`controls.uploads_paused`** — flag que **comanda el panel** (`POST /api/panel/pause`). **`controls.printing_paused`** — **reflejo** de lo que reporta el agente en su heartbeat (el panel lo muestra, no lo comanda).
+- **`agent`** — señal de vida por heartbeat/`/next`: `alive` = visto hace ≤ `AGENT_STALE_S` (default 30s).
+
 ### `GET /api/panel/jobs/{id}/image`  (Bearer)
 Miniatura/imagen del trabajo. **200** `image/png` · **404** no existe.
 
 ### `POST /api/panel/pause`
-Interruptores de emergencia. Pausar impresión → el agente recibe `204` en `/next`. Pausar subidas → `POST /api/jobs` responde `503`.
-- **Body**: `{ "target": "uploads" | "printing", "paused": <bool> }`.
+Pausa/reanuda **solo las SUBIDAS de invitados** (flag del backend) → `POST /api/jobs` responde `503` mientras esté en pausa. La **pausa de impresión NO se comanda desde acá**: la gobierna el agente localmente y el panel solo la refleja (`controls.printing_paused` en `/queue`).
+- **Body**: `{ "target": "uploads", "paused": <bool> }` (`target` default `"uploads"`).
 - **200** → `{ "uploads_paused", "printing_paused" }`.
+- **400** si `target` ≠ `"uploads"` (p. ej. `"printing"`): el panel no pausa la impresión remotamente.
 
 ### `POST /api/panel/reset`
 Limpia la cola: borra **todos** los trabajos y sus PNG (deja impresas/fallidas/en cola en cero). Para arrancar limpio antes del evento. **200** → `{ "deleted": <int> }`.
+> **Destructivo e irreversible.** No está cableado a ningún botón del panel a propósito; si se expone en la UI, hacerlo **detrás de un diálogo de confirmación**. Uso normal: `curl -X POST "$API/api/panel/reset" -H "Authorization: Bearer $PANEL_PASSWORD"` una sola vez antes de abrir puertas.
 
 ### `POST /api/panel/jobs/{id}/skip`
 Marca `skipped`. **200** → `{ "id", "status" }`.

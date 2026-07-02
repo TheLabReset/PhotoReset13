@@ -5,14 +5,15 @@ import {
   getQueue,
   panelLogin,
   reprintJob,
-  setPause,
+  setUploadsPaused,
   skipJob,
   type QueueResponse,
 } from '../lib/api'
 
 // Panel de operador (ruta /panel). Login con clave (PANEL_PASSWORD), luego cola
 // en vivo con miniaturas (autenticadas), saltar/reimprimir/reencolar, indicador
-// de papel, estado del agente (heartbeat) e interruptores de pausa.
+// de cartucho (papel+tinta KP-108IN), estado del agente (heartbeat), reflejo de
+// la pausa de impresión (la gobierna el agente) e interruptor de pausa de subidas.
 export default function PanelApp() {
   const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
@@ -108,12 +109,14 @@ export default function PanelApp() {
     }
   }
 
-  async function togglePause(target: 'uploads' | 'printing', next: boolean) {
+  // El panel solo comanda la pausa de SUBIDAS. La de impresión la gobierna el
+  // agente localmente y aquí solo se refleja (ver controls.printing_paused).
+  async function toggleUploads(next: boolean) {
     try {
-      await setPause(target, next, password)
+      await setUploadsPaused(next, password)
       await refresh(password)
     } catch {
-      setErr('No se pudo cambiar la pausa.')
+      setErr('No se pudo cambiar la pausa de subidas.')
     }
   }
 
@@ -173,9 +176,11 @@ export default function PanelApp() {
   }
 
   const jobs = data?.jobs ?? []
-  const paperTotal = data?.paper.total ?? 40
+  const paperTotal = data?.paper.total ?? 108
   const paperLeft = data?.paper.left ?? paperTotal
+  const paperLow = data?.paper.low ?? false
   const controls = data?.controls ?? { uploads_paused: false, printing_paused: false }
+  const counts = data?.counts ?? { total: 0, printed: 0, queued: 0, printing: 0 }
   const agent = data?.agent
 
   return (
@@ -199,16 +204,19 @@ export default function PanelApp() {
           </button>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div className="t-pixel" style={{ color: 'var(--veneno)', fontSize: 9 }}>
-            PAPEL {paperLeft}/{paperTotal}
+          <div
+            className="t-pixel"
+            style={{ color: paperLow ? 'var(--brasa)' : 'var(--veneno)', fontSize: 9 }}
+          >
+            CARTUCHO {paperLeft}/{paperTotal}
           </div>
           <div style={{ font: "400 9px 'Space Grotesk'", color: '#6a605c' }}>
-            quedan {paperLeft} hojas
+            quedan {paperLeft} impresiones
           </div>
         </div>
       </div>
 
-      {/* estado del agente + interruptores */}
+      {/* estado del agente + reflejo de impresión + interruptor de subidas */}
       <div
         style={{
           padding: '10px 18px',
@@ -218,7 +226,8 @@ export default function PanelApp() {
           gap: 8,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* estado del agente + reflejo de la pausa de impresión (la del agente) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span
             style={{
               width: 9,
@@ -236,23 +245,71 @@ export default function PanelApp() {
                 ? `Agente sin señal (hace ${agent.seconds_ago}s)`
                 : 'Agente nunca visto'}
           </span>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="qbtn"
-            style={pauseBtnStyle(controls.printing_paused)}
-            onClick={() => togglePause('printing', !controls.printing_paused)}
+          {/* Solo REFLEJO: el agente gobierna su propia pausa; el panel no la comanda. */}
+          <span
+            className="t-pixel"
+            style={{
+              fontSize: 8,
+              marginLeft: 'auto',
+              color: controls.printing_paused ? 'var(--brasa)' : 'var(--veneno)',
+            }}
           >
-            {controls.printing_paused ? '▶ reanudar impresión' : '⏸ pausar impresión'}
-          </button>
-          <button
-            className="qbtn"
-            style={pauseBtnStyle(controls.uploads_paused)}
-            onClick={() => togglePause('uploads', !controls.uploads_paused)}
-          >
-            {controls.uploads_paused ? '▶ reanudar subidas' : '⏸ pausar subidas'}
-          </button>
+            {controls.printing_paused ? 'IMPRESIÓN EN PAUSA (agente)' : 'IMPRESIÓN ACTIVA'}
+          </span>
         </div>
+
+        {/* contadores separados */}
+        <div style={{ display: 'flex', gap: 14, font: "400 10px 'Space Grotesk'", color: '#8a807a' }}>
+          <span>
+            en cola <b style={{ color: 'var(--hueso)' }}>{counts.queued}</b>
+          </span>
+          <span>
+            imprimiendo <b style={{ color: 'var(--brasa)' }}>{counts.printing}</b>
+          </span>
+          <span>
+            impresas <b style={{ color: 'var(--veneno)' }}>{counts.printed}</b>
+          </span>
+        </div>
+
+        {/* aviso de cartucho bajo (papel + tinta = mismo consumible KP-108IN) */}
+        {paperLow && (
+          <div
+            style={{
+              padding: '8px 10px',
+              border: '2px solid var(--brasa)',
+              borderRadius: 4,
+              background: '#1e120e',
+              color: 'var(--brasa)',
+              font: "700 11px 'Space Grotesk'",
+            }}
+          >
+            ⚠ Cambiar cartucho KP-108IN — quedan {paperLeft} impresiones (papel y tinta).
+          </div>
+        )}
+
+        {/* interruptor de SUBIDAS (lo único que comanda el panel) */}
+        <button
+          className="qbtn"
+          style={{ ...pauseBtnStyle(controls.uploads_paused), alignSelf: 'flex-start' }}
+          onClick={() => toggleUploads(!controls.uploads_paused)}
+        >
+          {controls.uploads_paused ? '▶ reanudar subidas' : '⏸ pausar subidas'}
+        </button>
+        {controls.uploads_paused && (
+          <div
+            style={{
+              padding: '8px 10px',
+              border: '2px solid var(--sangre)',
+              borderRadius: 4,
+              background: '#1c1010',
+              color: 'var(--hueso)',
+              font: "500 11px 'Space Grotesk'",
+            }}
+          >
+            Subidas en pausa: los invitados no pueden enviar fotos ahora mismo.
+          </div>
+        )}
+
         {err && (
           <div style={{ color: 'var(--brasa)', font: "500 10px 'Space Grotesk'" }}>{err}</div>
         )}
