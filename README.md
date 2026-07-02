@@ -10,7 +10,7 @@ Web mobile-first de **una sola noche** para la fiesta del 13 aniversario de Rese
   Invitado (celular)                Staff (laptop)
         │                                 │
         ▼                                 ▼
-  ┌───────────────┐   PNG 1200x1800  ┌───────────────┐
+  ┌───────────────┐   PNG 1200x1776  ┌───────────────┐
   │  Frontend     │ ───────────────► │   Backend     │
   │  (Netlify)    │   /api/jobs      │  (Railway)    │
   │  React+Vite   │ ◄─── panel ────► │  FastAPI      │
@@ -24,7 +24,7 @@ Web mobile-first de **una sola noche** para la fiesta del 13 aniversario de Rese
                                    └────────────────────┘
 ```
 
-- **Frontend** (`frontend/`, Netlify): todo el flujo del invitado + panel de operador. **Compone el PNG final (1200×1800) en canvas, en el navegador** — lo que ve el usuario es exactamente lo que se imprime.
+- **Frontend** (`frontend/`, Netlify): todo el flujo del invitado + panel de operador. **Compone el PNG final (1200×1776) en canvas, en el navegador** — lo que ve el usuario es exactamente lo que se imprime.
 - **Backend** (`backend/`, Railway): backend fino. Recibe el PNG ya compuesto, lo guarda, maneja la cola y lo entrega al agente. **No compone nada.**
 - **Agente de impresión**: repo **aparte** (no se construye aquí). Consume el contrato de `docs/API-CONTRACT.md`: pide el siguiente trabajo, descarga el PNG, imprime y reporta el estado.
 
@@ -34,7 +34,7 @@ Como frontend y backend viven en dominios distintos, el backend maneja **CORS** 
 
 ```
 frontend/            # React + Vite + TS (Netlify, base = frontend)
-  src/lib/compose.ts # composición en canvas -> PNG 1200x1800 (el corazón)
+  src/lib/compose.ts # composición en canvas -> PNG 1200x1776 (el corazón)
   src/styles/tokens.css
   public/brand/      # logos vivos (reset-r*.png)
 backend/             # FastAPI (Railway, root = backend)

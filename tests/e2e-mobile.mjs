@@ -37,7 +37,7 @@ async function runFlow(name, device, shoot) {
   await preview.waitFor({ timeout: 15000 })
   const dims = await preview.evaluate((el) => ({ w: el.naturalWidth, h: el.naturalHeight }))
   log(`[${name}] preview dims ${JSON.stringify(dims)}`)
-  if (dims.w !== 1200 || dims.h !== 1800) { log(`[${name}] FAIL dims`); failures++ }
+  if (dims.w !== 1200 || dims.h !== 1776) { log(`[${name}] FAIL dims`); failures++ }
   if (shoot) await page.screenshot({ path: `${SHOTS}/app-05-confirm.png` })
   await page.getByText('ENVIAR A IMPRIMIR').click()
   await page.getByText('¡LISTO!').waitFor({ timeout: 20000 })

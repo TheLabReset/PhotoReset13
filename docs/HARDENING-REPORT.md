@@ -36,7 +36,7 @@ Leyenda: ✅ corregido · 📌 aceptado/documentado · 🧩 gap de contenido (lo
 | M6 | Sin retry ante fallo puntual de red. | ✅ Cubierto por A3 (backoff). |
 | M7 | `navigator.onLine` distinguía mal offline vs error. | ✅ El tipo de error del XHR decide el mensaje (sin señal / se cayó / en pausa / rechazada). |
 | M8 | `100dvh` faltaba en `#root` (iOS Safari, barra de direcciones). | ✅ `#root` y `.phone` usan `100dvh`; el espaciador superior respeta el notch. |
-| M9 | Decompression bomb en el upload. | ✅ `Image.MAX_IMAGE_PIXELS` acotado a 1200×1800×2. |
+| M9 | Decompression bomb en el upload. | ✅ `Image.MAX_IMAGE_PIXELS` acotado a 1200×1776×2. |
 | M10 | CORS `*` + credentials frágil. | ✅ Fail-fast rechaza `*` con credentials. |
 | M11 | `counts.queued` incluía `printing` (confuso en el panel). | ✅ `counts` separa `queued` y `printing`. |
 

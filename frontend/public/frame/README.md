@@ -6,4 +6,4 @@ el PNG final (fondo negro/rojo + keyline + "13 AÑOS" + logo R + nombre) — ver
 doble marco.
 
 Si algún día se hornea un marco como imagen, debe ser **alta resolución o
-vectorial** para no salir suave a 1200×1800 @300dpi.
+vectorial** para no salir suave a 1200×1776 (~305dpi).

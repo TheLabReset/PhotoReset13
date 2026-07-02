@@ -57,7 +57,7 @@ Estados de sistema diseñados: subiendo, error de subida (reintentar), sin conex
 
 ## 4. Recorte (contrato clave)
 
-- Relación de aspecto fija **2:3** (retrato, = al marco).
+- Relación de aspecto fija = **proporción de la ventana de la foto** (`CROP_ASPECT` = 1020/1498 ≈ **0.681**, expuesta desde `compose.ts`). El **lienzo** completo es 100:148 (papel SELPHY); la ventana es un poco más cuadrada por los bordes del marco. Recortar a la proporción de la ventana evita distorsión al dibujar.
 - Modo **cover**: la ventana siempre llena, nunca hay bordes vacíos. El zoom mínimo es el que cubre la ventana; no se puede alejar más.
 - Gestos: arrastrar (pan) + pinch/slider/rueda (zoom).
 - Salida: **coordenadas del recorte** en px de la imagen original — `{ x, y, width, height }` (equivalente a `croppedAreaPixels` de react-easy-crop). No se recorta la imagen en el cliente; las coordenadas viajan con la foto.
@@ -69,12 +69,13 @@ Estados de sistema diseñados: subiendo, error de subida (reintentar), sin conex
 
 **Decisión de arquitectura: el cliente compone la imagen final, no el servidor.** El preview *es* la impresión. No hay marco PNG separado ni doble marco.
 
-Al enviar, se genera en canvas un **PNG 1200×1800 (2:3, 4"×6" @300dpi)** apilando:
-1. Foto del invitado recortada (usando las coordenadas del §4, `drawImage` con rect fuente).
-2. Marco: borde (**negro o rojo**, random por foto), "13 AÑOS" arriba (Anton), logo R + nombre en una línea abajo.
-3. Stickers **random por foto** (bola 8 / sello 13 / corazón pixel) en esquinas.
+Al enviar, se genera en canvas un **PNG 1200×1776 (100:148, postal 100×148mm @~305dpi)** apilando:
+1. **Marco** de color (**negro o rojo**, random por foto) a todo el lienzo (sangra a los 4 bordes).
+2. Foto del invitado recortada dentro de la **ventana** (bordes: lados 90, arriba 128, abajo 150), a resolución completa desde el bitmap original (sin pérdida). El recorte usa la **proporción de la ventana** (≈0.681), así no se distorsiona.
+3. "13 AÑOS" arriba (Anton) y logo R + nombre abajo — con **~5mm de margen al filo** (2.5× el overscan típico de ~2mm).
+4. Stickers **random por foto** (bola 8 / sello 13 / corazón pixel + sticker sheet PNG) montando el borde de la ventana, con contorno hueso die-cut.
 
-Bordes del marco sobre 1200px: lados 90, arriba 120, abajo 150 (casi parejos, inferior apenas mayor para el nombre). Ese PNG es lo que se manda a la impresora.
+El lienzo coincide con la proporción del papel de la SELPHY: el agente (modo contain) imprime 1 a 1 sin recortar. El color del marco llega al filo; el sobre-escaneo sin bordes (~2mm) solo come color de marco, nunca el texto. Ese PNG es lo que se manda a la impresora.
 
 ---
 

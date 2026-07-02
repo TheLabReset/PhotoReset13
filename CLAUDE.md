@@ -12,7 +12,7 @@ Fondo **tinta** casi negro (`#120E0E`), **rojo sangre** dominante (`#D21F1F`, ma
 Gradientes violeta→azul, glassmorphism/glows, texto en gradiente, borde de color en un solo lado de card redondeada, cards anidadas, emojis como iconos.
 
 ## Regla dura
-La imagen final se **compone en el cliente, en canvas, a 1200×1800** (`frontend/src/lib/compose.ts`). **Nunca** en el servidor. El backend guarda el PNG tal cual llega.
+La imagen final se **compone en el cliente, en canvas, a 1200×1776** (proporción del papel postal 100×148mm de la SELPHY; `frontend/src/lib/compose.ts`). **Nunca** en el servidor. El backend guarda el PNG tal cual llega. Es un **marco de color con la foto en ventana**; el texto ("13 AÑOS"/nombre) va con **~5mm de margen al filo** (bordes 128/150) para no cortarse en la impresión sin bordes. El recorte usa la proporción de la ventana (`CROP_ASPECT`, no distorsiona).
 
 ## Logos por fondo
 `reset-r-hueso` (claro) sobre fondo oscuro; `reset-r-tinta` (oscuro) sobre fondo claro. En el marco (negro o rojo) siempre va **hueso**.

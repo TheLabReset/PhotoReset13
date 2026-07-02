@@ -10,7 +10,7 @@ from PIL import Image
 from .config import DATA_DIR, EXPECTED_H, EXPECTED_W
 
 # Guarda contra "decompression bombs": nunca decodificar más píxeles de los que
-# el marco final puede tener (1200x1800 con algo de margen).
+# el marco final puede tener (1200x1776 con algo de margen).
 Image.MAX_IMAGE_PIXELS = EXPECTED_W * EXPECTED_H * 2
 
 
@@ -29,7 +29,7 @@ class InvalidImage(Exception):
 
 
 def validate_and_clean(raw: bytes) -> Image.Image:
-    """Valida que sea un PNG de 1200x1800 y devuelve una copia RGB limpia.
+    """Valida que sea un PNG de 1200x1776 y devuelve una copia RGB limpia.
 
     No recompone ni redimensiona: solo verifica y descarta metadatos. Se llama
     ANTES de crear el trabajo, así una imagen inválida no deja un registro colgado

@@ -13,7 +13,7 @@ PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "")
 
 # Dimensiones esperadas del PNG final compuesto en el cliente.
 EXPECTED_W = 1200
-EXPECTED_H = 1800
+EXPECTED_H = 1776
 
 # Capacidad de papel (para el indicador del panel).
 PAPER_TOTAL = int(os.environ.get("PAPER_TOTAL", "120"))

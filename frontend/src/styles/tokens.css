@@ -48,10 +48,10 @@
   --shadow-card: 0 16px 34px -14px rgba(0,0,0,.9);
 
   /* ---- Marco de impresión ---- */
-  --marco-ratio: 2 / 3;    /* 1200 × 1800 px @300dpi (4"×6") */
+  --marco-ratio: 100 / 148;  /* 1200 × 1776 px (~305dpi, postal 100×148mm SELPHY) */
   --marco-color-a: var(--tinta);   /* negro */
   --marco-color-b: var(--sangre);  /* rojo — random por foto */
-  /* bordes del marco (sobre 1200px): lados 90, arriba 120, abajo 150 */
+  /* marco negro/rojo con ventana de foto; texto en zona segura 96px; recorte = proporción de la ventana */
 }
 
 /* Texturas obligatorias (rompen el look de IA):

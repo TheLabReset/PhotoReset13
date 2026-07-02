@@ -5,7 +5,7 @@ set -u
 # Config por entorno (con defaults). Ver tests/README.md.
 B="${BASE:-http://127.0.0.1:8040}"
 PK="${PRINTER_KEY:-pk}"; PP="${PANEL_PASSWORD:-1313}"
-IMG="$1"      # PNG 1200x1800 de prueba
+IMG="$1"      # PNG 1200x1776 de prueba
 WORK="$2"     # carpeta temporal para respuestas
 fail=0
 rm -rf "$WORK"; mkdir -p "$WORK/uniq" "$WORK/dup" "$WORK/claim"

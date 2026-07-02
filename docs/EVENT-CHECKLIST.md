@@ -7,7 +7,7 @@ Lo que el código ya dejó verde está en `docs/HARDENING-REPORT.md`. Esto es lo
 - [ ] Conectar la Canon SELPHY a la laptop y confirmar que imprime una foto de prueba desde Windows.
 - [ ] Correr el **agente de impresión** (repo aparte) apuntando al backend con `PRINTER_KEY`.
 - [ ] Subir 1 foto desde un celular por el flujo real y confirmar que **sale impresa sola**, sin operador.
-- [ ] Verificar tamaño/encuadre: la impresión debe ser 4"×6" (1200×1800 @300dpi), sin bordes vacíos.
+- [ ] Verificar tamaño/encuadre: la impresión debe ser postal 100×148mm (1200×1776, ~305dpi), sin bordes vacíos.
 - [ ] Matar el agente a mitad de un trabajo y confirmar que, tras el timeout, ese trabajo vuelve a la cola y se reimprime (recuperación de cola trabada).
 - [ ] En el panel, ver que la impresora aparece como **“conectada”** cuando el agente late, y **“sin señal”** cuando lo apagas.
 - [ ] Probar los interruptores del panel: **pausar impresión** (deja de salir) y **reanudar**; **pausar subidas** (el invitado ve “en pausa”) y **reanudar**.

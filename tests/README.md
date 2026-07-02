@@ -24,7 +24,7 @@ Con el backend corriendo en el puerto 8040 y `PRINTING_TIMEOUT_S=1`:
 export DATA_DIR=/tmp/conc PRINTER_KEY=pk PANEL_PASSWORD=1313 \
        FRONTEND_ORIGIN=http://127.0.0.1:5173 PRINTING_TIMEOUT_S=1
 uvicorn app.main:app --port 8040 &         # desde backend/ con el venv activo
-python -c "from PIL import Image; Image.new('RGB',(1200,1800),(210,31,31)).save('/tmp/c.png')"
+python -c "from PIL import Image; Image.new('RGB',(1200,1776),(210,31,31)).save('/tmp/c.png')"
 bash tests/concurrency_test.sh /tmp/c.png /tmp/concwork
 # espera: ALL_CONCURRENCY_PASS
 ```
@@ -44,6 +44,6 @@ APP_URL=http://127.0.0.1:5173 TEST_IMG=/tmp/p.png SHOTS=/tmp/shots \
 # espera: MOBILE_E2E_PASS ; deja screenshots en /tmp/shots
 ```
 Emula iPhone 13 y Pixel 7, corre el flujo completo, verifica que el PNG
-compuesto sea **1200×1800**, y captura portada/source/crop/nombre/confirmación/
+compuesto sea **1200×1776**, y captura portada/source/crop/nombre/confirmación/
 éxito/límite/panel. (Si tu Chromium no es el de Playwright, pásalo con
 `CHROME=/ruta/a/chrome`.)

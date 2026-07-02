@@ -64,8 +64,6 @@ export default function GuestApp() {
     }
   }, [])
 
-  const nameUpper = (name || 'TU APODO').toUpperCase()
-
   // --- navegación ---
   const home = () => setScreen('portada')
   const start = () => {
@@ -481,7 +479,7 @@ export default function GuestApp() {
               }}
             >
               {imgSrc && (
-                <PhotoCropper src={imgSrc} nameUpper={nameUpper} onCropChange={setCrop} />
+                <PhotoCropper src={imgSrc} onCropChange={setCrop} />
               )}
             </div>
             <div

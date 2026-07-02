@@ -8,7 +8,7 @@ from ..storage import InvalidImage, validate_and_clean, write_image
 router = APIRouter(prefix="/api", tags=["public"])
 log = get_logger("public")
 
-MAX_BYTES = 12 * 1024 * 1024  # tope defensivo (~12MB) para el PNG 1200x1800
+MAX_BYTES = 12 * 1024 * 1024  # tope defensivo (~12MB) para el PNG 1200x1776
 
 
 def _clean_name(name: str) -> str:

@@ -257,7 +257,7 @@ body {
   border-radius: 2px;
 }
 
-/* La confirmación/éxito muestran el PNG compuesto real (1200×1800) en un <img>:
+/* La confirmación/éxito muestran el PNG compuesto real (1200×1776) en un <img>:
    el preview ES la impresión. No hay marco de preview separado en el DOM. */
 
 /* ---- links discretos ---- */

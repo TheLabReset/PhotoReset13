@@ -4,7 +4,9 @@ Contrato entre **frontend** (Netlify), **backend** (Railway) y el **agente de im
 
 Base URL del backend: la que expone Railway (en el frontend es `VITE_API_BASE_URL`).
 
-Regla de arquitectura: el frontend **compone** el PNG final (1200×1800) en canvas y sube ese PNG ya listo. El backend **no compone nada**: valida dimensiones, guarda el PNG tal cual, maneja la cola y lo entrega al agente.
+Regla de arquitectura: el frontend **compone** el PNG final (**1200×1776**) en canvas y sube ese PNG ya listo. El backend **no compone nada**: valida dimensiones, guarda el PNG tal cual, maneja la cola y lo entrega al agente.
+
+> **Tamaño del PNG: 1200×1776 px** = postal 100×148mm a 12 px/mm (~305 dpi), la proporción exacta del papel de la Canon SELPHY. **Nota para el repo del agente:** debe conocer este tamaño; **no** necesita cambio de código porque su modo *contain* imprime cualquier proporción 1 a 1 — al coincidir con el papel, la coloca sin recortar ni dejar blanco. (Antes era 1200×1800 / 2:3, que no coincidía y recortaba los textos del borde.)
 
 Autenticación por header `Authorization: Bearer <token>`:
 - Endpoints del **agente** validan `PRINTER_KEY`.
@@ -19,7 +21,7 @@ Modelo `Job`: `id` (uuid hex), `name` (≤18), `status` (`queued|printing|printe
 
 ### `POST /api/jobs`
 Sube el PNG final ya compuesto.
-- **Body** (`multipart/form-data`): `image` (PNG **1200×1800**), `name` (string, opcional).
+- **Body** (`multipart/form-data`): `image` (PNG **1200×1776**), `name` (string, opcional).
 - **Header** (opcional pero recomendado): `Idempotency-Key: <uuid>`. Si llega dos veces la misma clave (doble tap, reintento de red), NO se crea un segundo trabajo: se devuelve el existente. El PNG se valida **antes** de crear el registro (no quedan trabajos colgados).
 - Valida tipo (PNG) y dimensiones exactas. Reencodea por seguridad (descarta metadatos, guarda contra decompression bombs).
 - **201** → `{ "id": "<uuid>", "position": <int>, "duplicate": <bool> }` (`duplicate: true` si se dedupeó por idempotencia).

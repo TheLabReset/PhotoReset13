@@ -195,6 +195,8 @@ function halfSize(p: StickerPlacement, img?: HTMLImageElement): { hw: number; hh
 }
 
 // Dibuja EXACTAMENTE los stickers horneados. `imgs` mapea file -> imagen cargada.
+// Los stickers montan el borde de la ventana (parte sobre el marco de color,
+// parte sobre la foto), con contorno hueso para contraste en negro o rojo.
 export function drawStickers(
   x: CanvasRenderingContext2D,
   g: WinGeom,
@@ -208,11 +210,9 @@ export function drawStickers(
     const { hw, hh } = halfSize(p, img)
     const isLeft = p.corner === 'tl' || p.corner === 'bl'
     const isTop = p.corner === 'tl' || p.corner === 'tr'
-    // "Sangrado": el sticker cruza el borde de la ventana y queda parte sobre el
-    // marco, parte sobre la foto. Se acota al ancho del borde (no salir del
-    // lienzo) y hacia abajo se sangra menos para no acercarse al nombre.
-    // Sangrado moderado: cruzan el filo pero quedan mayormente sobre la foto
-    // (clara), donde el contraste es bueno. El contorno hueso cubre el resto.
+    // Sangrado moderado: cruzan el borde de la ventana pero quedan mayormente
+    // sobre la foto; el contorno hueso cubre el contraste. Hacia abajo sangra
+    // menos para no acercarse al nombre.
     const bleedX = Math.min(0.2 * (hw * 2), g.bl - SAFE, g.br - SAFE, 52)
     const bleedTop = Math.min(0.18 * (hh * 2), g.bt - SAFE, 52)
     const bleedBot = Math.min(0.13 * (hh * 2), g.bb - SAFE, 38)

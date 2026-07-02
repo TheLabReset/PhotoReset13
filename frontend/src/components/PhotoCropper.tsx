@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
-import type { CropArea } from '../lib/compose'
+import { CROP_ASPECT, type CropArea } from '../lib/compose'
 
-// Recorte 2:3, modo cover (la ventana siempre llena, zoom mínimo = el que cubre;
-// react-easy-crop garantiza cover con restrictPosition por defecto). Guarda las
-// coordenadas del recorte (croppedAreaPixels), no la imagen.
+// Recorte a la proporción de la VENTANA de la foto (CROP_ASPECT), modo cover (la
+// ventana siempre llena, zoom mínimo = el que cubre; react-easy-crop garantiza
+// cover con restrictPosition por defecto). Guarda las coordenadas
+// (croppedAreaPixels), no la imagen. La ventana muestra EXACTAMENTE la foto que
+// sale impresa dentro del marco (el "13 AÑOS" y el nombre van en los bordes del
+// marco, fuera de la ventana), así lo que encuadras es lo que se imprime.
 interface Props {
   src: string
-  nameUpper: string
   onCropChange: (area: CropArea) => void
 }
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 
-export default function PhotoCropper({ src, nameUpper, onCropChange }: Props) {
+export default function PhotoCropper({ src, onCropChange }: Props) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
 
@@ -22,7 +24,7 @@ export default function PhotoCropper({ src, nameUpper, onCropChange }: Props) {
     <>
       <div
         className="cropwin"
-        style={{ position: 'relative', width: '100%', maxWidth: 300, aspectRatio: '2 / 3' }}
+        style={{ position: 'relative', width: '100%', maxWidth: 300, aspectRatio: `${CROP_ASPECT}` }}
       >
         <Cropper
           image={src}
@@ -30,7 +32,7 @@ export default function PhotoCropper({ src, nameUpper, onCropChange }: Props) {
           zoom={zoom}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
-          aspect={2 / 3}
+          aspect={CROP_ASPECT}
           objectFit="cover"
           showGrid={true}
           zoomWithScroll={true}
@@ -45,8 +47,8 @@ export default function PhotoCropper({ src, nameUpper, onCropChange }: Props) {
             })
           }
         />
-        {/* Overlays de encuadre (no capturan gestos): keyline, degradado y ghost
-            del marco para previsualizar "lo que ves es lo que sale". */}
+        {/* Keyline de la ventana. Sin degradado ni ghost de texto: la ventana
+            muestra tal cual la foto que sale (el texto va en el marco, fuera). */}
         <div
           style={{
             position: 'absolute',
@@ -56,52 +58,6 @@ export default function PhotoCropper({ src, nameUpper, onCropChange }: Props) {
             zIndex: 5,
           }}
         />
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            background:
-              'linear-gradient(rgba(0,0,0,.45),transparent 20%,transparent 80%,rgba(0,0,0,.6))',
-            zIndex: 5,
-          }}
-        />
-        <div
-          className="t-anton"
-          style={{
-            position: 'absolute',
-            top: 6,
-            left: 0,
-            right: 0,
-            textAlign: 'center',
-            color: '#fff',
-            fontSize: 10,
-            letterSpacing: '.3em',
-            textShadow: '0 1px 2px #000',
-            pointerEvents: 'none',
-            zIndex: 6,
-          }}
-        >
-          13 AÑOS
-        </div>
-        <div
-          className="t-anton"
-          style={{
-            position: 'absolute',
-            bottom: 6,
-            left: 0,
-            right: 0,
-            textAlign: 'center',
-            color: '#fff',
-            fontSize: 11,
-            letterSpacing: '.06em',
-            textShadow: '0 1px 2px #000',
-            pointerEvents: 'none',
-            zIndex: 6,
-          }}
-        >
-          {nameUpper}
-        </div>
       </div>
 
       {/* slider de zoom */}
