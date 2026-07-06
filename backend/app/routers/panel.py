@@ -1,5 +1,7 @@
 """Panel de operador (Authorization: Bearer PANEL_PASSWORD)."""
 import hmac
+import io
+import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
@@ -82,6 +84,43 @@ def job_image(job_id: str):
     if data is None:
         raise HTTPException(status_code=404, detail="No existe la imagen")
     return Response(content=data, media_type="image/png")
+
+
+def _safe_filename(name: str) -> str:
+    """Nombre de archivo seguro dentro del zip (sin separadores ni raros)."""
+    keep = "".join(c if (c.isalnum() or c in " -_") else "" for c in (name or "")).strip()
+    return keep.replace(" ", "-")[:40]
+
+
+@router.get("/download-all", dependencies=[Depends(require_panel_password)])
+def download_all():
+    """Respaldo: descarga TODAS las fotos guardadas en un zip. Los PNG ya vienen
+    comprimidos, así que el zip solo los empaqueta (ZIP_STORED, rápido y sin CPU).
+    Cada archivo se nombra por orden de llegada + nombre + id corto, para ubicarlo.
+    No borra nada; es solo lectura.
+
+    Nota de memoria: arma el zip completo en RAM (pico ~2× el total de bytes de
+    fotos). Es una llamada ocasional del staff, no de invitados ni de la ruta
+    caliente, así que es un trade-off aceptable; con miles de fotos convendría
+    streamear a archivo temporal."""
+    jobs = sorted(models.list_jobs(), key=lambda j: j["created_at"])
+    buf = io.BytesIO()
+    included = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+        for i, j in enumerate(jobs, 1):
+            data = read_png(j["id"])
+            if data is None:
+                continue
+            safe = _safe_filename(j["name"]) or "sin-nombre"
+            zf.writestr(f"{i:03d}-{safe}-{j['id'][:8]}.png", data)
+            included += 1
+    buf.seek(0)
+    log.info("panel: descarga de respaldo (%d fotos)", included)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="reset13-fotos.zip"'},
+    )
 
 
 @router.post("/pause", dependencies=[Depends(require_panel_password)])

@@ -98,6 +98,9 @@ Orden: `printing` primero, luego `queued` (más antiguo primero), luego el resto
 ### `GET /api/panel/jobs/{id}/image`  (Bearer)
 Miniatura/imagen del trabajo. **200** `image/png` · **404** no existe.
 
+### `GET /api/panel/download-all`  (Bearer)
+Respaldo: descarga **todas** las fotos guardadas en un `.zip` (útil para imprimir/entregar después, sin depender del agente). Solo lectura, no borra nada. Cada archivo se nombra `NNN-nombre-idcorto.png` por orden de llegada. **200** `application/zip` (`Content-Disposition: attachment`).
+
 ### `POST /api/panel/pause`
 Pausa/reanuda **solo las SUBIDAS de invitados** (flag del backend) → `POST /api/jobs` responde `503` mientras esté en pausa. La **pausa de impresión NO se comanda desde acá**: la gobierna el agente localmente y el panel solo la refleja (`controls.printing_paused` en `/queue`).
 - **Body**: `{ "target": "uploads", "paused": <bool> }` (`target` default `"uploads"`).

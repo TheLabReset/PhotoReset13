@@ -171,6 +171,19 @@ export async function fetchThumb(path: string, password: string): Promise<string
   return URL.createObjectURL(blob)
 }
 
+// Respaldo: baja un zip con TODAS las fotos guardadas (fetch con Bearer -> blob
+// -> descarga). La clave no viaja en la URL.
+export async function downloadAllPhotos(password: string): Promise<void> {
+  const res = await panelFetch('/api/panel/download-all', password)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'reset13-fotos.zip'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function skipJob(id: string, password: string): Promise<void> {
   await panelFetch(`/api/panel/jobs/${id}/skip`, password, { method: 'POST' })
 }

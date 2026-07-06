@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import StatusBar from '../components/StatusBar'
 import {
+  downloadAllPhotos,
   fetchThumb,
   getQueue,
   panelLogin,
@@ -25,6 +26,7 @@ export default function PanelApp() {
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const thumbsRef = useRef<Record<string, string>>({})
   const timer = useRef<number | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   const refresh = useCallback(async (pw: string) => {
     try {
@@ -117,6 +119,19 @@ export default function PanelApp() {
       await refresh(password)
     } catch {
       setErr('No se pudo cambiar la pausa de subidas.')
+    }
+  }
+
+  // Respaldo: baja un zip con todas las fotos guardadas (para imprimir/entregar
+  // después). Es solo lectura, no borra nada.
+  async function downloadAll() {
+    setDownloading(true)
+    try {
+      await downloadAllPhotos(password)
+    } catch {
+      setErr('No se pudo descargar el respaldo. Reintenta.')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -287,14 +302,24 @@ export default function PanelApp() {
           </div>
         )}
 
-        {/* interruptor de SUBIDAS (lo único que comanda el panel) */}
-        <button
-          className="qbtn"
-          style={{ ...pauseBtnStyle(controls.uploads_paused), alignSelf: 'flex-start' }}
-          onClick={() => toggleUploads(!controls.uploads_paused)}
-        >
-          {controls.uploads_paused ? '▶ reanudar subidas' : '⏸ pausar subidas'}
-        </button>
+        {/* interruptor de SUBIDAS (lo único que comanda el panel) + respaldo */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            className="qbtn"
+            style={pauseBtnStyle(controls.uploads_paused)}
+            onClick={() => toggleUploads(!controls.uploads_paused)}
+          >
+            {controls.uploads_paused ? '▶ reanudar subidas' : '⏸ pausar subidas'}
+          </button>
+          <button
+            className="qbtn"
+            style={{ borderColor: 'var(--veneno)', color: 'var(--veneno)', fontSize: 11 }}
+            onClick={downloadAll}
+            disabled={downloading || counts.total === 0}
+          >
+            {downloading ? 'descargando…' : `⬇ descargar todas (${counts.total})`}
+          </button>
+        </div>
         {controls.uploads_paused && (
           <div
             style={{
