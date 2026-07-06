@@ -3,6 +3,20 @@
 Lo que el código ya dejó verde está en `docs/HARDENING-REPORT.md`. Esto es lo que
 **solo un humano puede cerrar**. Hazlo con tiempo, no la noche del evento.
 
+## 0. Modo buzón (impresión diferida) 📥 — el que se usa ahora
+
+La impresión en vivo no se pudo la noche del evento, así que el flujo pasó a
+**recibir todas las fotos ahora e imprimirlas/entregarlas después**. La web guarda
+todo; el agente/worker se conecta luego para imprimir. Nada se borra solo.
+
+- [ ] **Recibir**: comparte el link. Cada invitado manda hasta **2 fotos** con su nombre; el marco se compone igual (1200×1776). Todo queda guardado en el servidor (volumen de Railway `/data`), en estado `queued`, esperando.
+- [ ] **Cerrar el buzón** cuando ya no quieras recibir más: en el panel, **pausar subidas** (el invitado ve "en pausa"). Reanudable si hace falta.
+- [ ] **Respaldo antes de imprimir**: en el panel, **⬇ descargar todas** baja un zip con todas las fotos. Guárdalo en dos sitios. **NO llames a `/api/panel/reset` hasta haber impreso y entregado** (borra todo, es irreversible).
+- [ ] **Imprimir después**: conecta el agente/worker (en una laptop que sí funcione) apuntando al backend con el `PRINTER_KEY`. Empezará a drenar la cola solo, del más antiguo al más nuevo, e irá marcando `impresas`. No hay que tocar nada más.
+- [ ] Verifica en el panel que el contador **impresas** sube y **en cola** baja mientras el worker trabaja.
+
+> Nota Windows 11: si el agente detecta la impresora y luego la deja en *busy* sin recibir el trabajo (lo que pasó el día del evento), es problema del lado del agente/driver, no de la web — la cola y las fotos quedan intactas para reintentar.
+
 ## 1. Prueba de impresora (10 min, en la laptop Windows del evento) 🖨️
 - [ ] Conectar la Canon SELPHY a la laptop y confirmar que imprime una foto de prueba desde Windows.
 - [ ] Correr el **agente de impresión** (repo aparte) apuntando al backend con `PRINTER_KEY`.

@@ -25,9 +25,28 @@ type Screen =
 
 const MAX_NAME = 18
 
+// Frases cálidas que rotan al azar en Éxito/Límite. Ya no hay impresión en vivo:
+// las fotos se guardan y se entregan después, así que el mensaje es de recuerdo
+// (no "recógela en la mesa"). Se elige una al azar cada vez que se llega a la
+// pantalla, así va cambiando.
+const RANDOM_PHRASES = [
+  'Espero que recuerdes la noche.',
+  'Pronto vas a tener tus fotos.',
+  'Feliz Aniversario. Gracias por la foto.',
+  'Esa se va directo al recuerdo.',
+  '¿Cuánto tomaste, a todo esto?',
+  'Nos vemos en la próxima, crack.',
+  '¿Con ojeras?',
+  '¿Con resaca?',
+]
+function pickPhrase(): string {
+  return RANDOM_PHRASES[Math.floor(Math.random() * RANDOM_PHRASES.length)]
+}
+
 export default function GuestApp() {
   const [screen, setScreen] = useState<Screen>('portada')
   const [photosLeft, setPhotosLeft] = useState(2)
+  const [phrase, setPhrase] = useState(pickPhrase())
 
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const bitmapRef = useRef<ImageBitmap | null>(null)
@@ -72,8 +91,15 @@ export default function GuestApp() {
     setComposed(null)
     setComposeFailed(false)
     idempKeyRef.current = ''
-    setScreen(getPhotosLeft() > 0 ? 'source' : 'limit')
+    if (getPhotosLeft() > 0) {
+      setScreen('source')
+    } else {
+      setPhrase(pickPhrase())
+      setScreen('limit')
+    }
   }
+  // Acceso del staff al panel (link discreto de la portada). Los invitados NO ven
+  // botones al panel en Éxito/Límite: solo el staff entra por acá (con clave).
   const goPanel = () => {
     window.location.href = '/panel'
   }
@@ -157,6 +183,7 @@ export default function GuestApp() {
       const left = consumePhoto()
       setPhotosLeft(left)
       idempKeyRef.current = '' // consumida; una próxima subida usa clave nueva
+      setPhrase(pickPhrase())
       setScreen('success')
     } catch (e) {
       const kind = e instanceof UploadError ? e.kind : 'network'
@@ -265,7 +292,7 @@ export default function GuestApp() {
               style={{ fontSize: 27, marginTop: 26, animation: 'rise .5s .6s both' }}
               onClick={start}
             >
-              QUIERO IMPRIMIR
+              DEJA TU FOTO
             </button>
             <div
               style={{
@@ -526,7 +553,7 @@ export default function GuestApp() {
               </span>
             </div>
             <p style={{ color: '#9a908a', fontSize: 13, margin: '-4px 0 8px' }}>
-              Va impreso en tu foto y sirve para encontrarla en la mesa.
+              Va impreso en tu foto y sirve para saber que es tuya.
             </p>
             <div style={{ position: 'relative' }}>
               <input
@@ -594,7 +621,7 @@ export default function GuestApp() {
           <div className="pbody" style={{ gap: 11 }}>
             <div style={{ textAlign: 'center' }}>
               <span className="t-anton" style={{ color: 'var(--hueso)', fontSize: 22 }}>
-                ASÍ SE VA A IMPRIMIR
+                ASÍ VA A QUEDAR
               </span>
             </div>
             <div
@@ -675,7 +702,7 @@ export default function GuestApp() {
               </span>
             </div>
             <button className="btn" onClick={submit} disabled={!composed}>
-              ENVIAR A IMPRIMIR
+              ENVIAR MI FOTO
             </button>
             <button
               className="btn gh"
@@ -697,8 +724,8 @@ export default function GuestApp() {
             style={{ justifyContent: 'center', textAlign: 'center', alignItems: 'center' }}
           >
             <div className="t-anton" style={{ color: 'var(--hueso)', fontSize: 30 }}>
-              MANDANDO
-              <br />A LA COLA
+              GUARDANDO
+              <br />TU FOTO
             </div>
             <p style={{ color: '#8a807a', fontSize: 13, margin: '12px 0 22px' }}>
               No cierres. Ya casi.
@@ -766,8 +793,8 @@ export default function GuestApp() {
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: 16, letterSpacing: '.1em' }}>EN LA</span>
-                <span style={{ fontSize: 28, lineHeight: 0.8 }}>COLA</span>
+                <span style={{ fontSize: 22, lineHeight: 0.9 }}>GUAR-</span>
+                <span style={{ fontSize: 22, lineHeight: 0.9 }}>DADA</span>
               </div>
             </div>
             <div
@@ -785,7 +812,7 @@ export default function GuestApp() {
                 animation: 'rise .5s .6s both',
               }}
             >
-              Así salió tu impresión. Recógela en la mesa.
+              Tu foto quedó guardada. {phrase}
             </p>
             {composed && (
               <img
@@ -829,9 +856,9 @@ export default function GuestApp() {
               <button
                 className="btn"
                 style={{ fontSize: 17, width: 'auto', padding: '12px 20px' }}
-                onClick={() => (photosLeft > 0 ? start() : goPanel())}
+                onClick={() => (photosLeft > 0 ? start() : home())}
               >
-                {photosLeft > 0 ? 'MANDAR OTRA' : 'VER LA COLA'}
+                {photosLeft > 0 ? 'MANDAR OTRA' : 'AL INICIO'}
               </button>
               <button
                 className="btn gh"
@@ -866,22 +893,22 @@ export default function GuestApp() {
               className="t-creep"
               style={{ color: 'var(--hueso)', fontSize: 52, lineHeight: 0.9, marginTop: 14 }}
             >
-              se acabó
+              ya está
             </div>
             <div className="t-anton" style={{ color: 'var(--sangre)', fontSize: 32, marginTop: 6 }}>
-              VE POR UN TRAGO
+              QUEDARON GUARDADAS
             </div>
             <p style={{ color: '#b7ada6', fontSize: 14, lineHeight: 1.45, margin: '16px 16px 0' }}>
-              Ya quemaste tus 2 fotos, crack.
+              Ya dejaste tus 2 fotos, crack.
               <br />
-              Anda a la mesa a recogerlas.
+              {phrase}
             </p>
             <button
               className="btn gh"
               style={{ fontSize: 14, padding: '10px 18px', marginTop: 24, width: 'auto' }}
-              onClick={goPanel}
+              onClick={home}
             >
-              Ver la cola
+              Al inicio
             </button>
           </div>
         </div>
